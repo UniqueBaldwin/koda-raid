@@ -11,5 +11,5 @@ app.get('/encender', (req, res) => {
 });
 
 // Mantener el bot vivo
-client.login('DISCORD_TOKEN'); 
+client.login(process.env.DISCORD_TOKEN);
 app.listen(3000, () => console.log('Servidor listo'));
