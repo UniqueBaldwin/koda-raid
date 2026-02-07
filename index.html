@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Control Koda</title>
+    <style>
+        body { background: #23272a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #2c2f33; padding: 30px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); text-align: center; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 80%; margin-bottom: 20px; font-size: 16px; }
+        button { background: #5865f2; color: white; border: none; padding: 12px 25px; border-radius: 5px; font-size: 18px; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #4752c4; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Control de Koda 🤖</h1>
+        <p>Escribe un mensaje para el canal:</p>
+        <input type="text" id="mensajeInput" placeholder="¡Hola grupo!">
+        <br>
+        <button onclick="enviarMensaje()">Mandar a Discord</button>
+    </div>
+
+    <script>
+        async function enviarMensaje() {
+            const msg = document.getElementById('mensajeInput').value;
+            // REEMPLAZA ESTA URL POR LA TUYA DE RENDER:
+            const urlRender = 'https://koda-raid.onrender.com'; 
+
+            try {
+                const response = await fetch(urlRender);
+                if(response.ok) alert('¡Mensaje enviado con éxito!');
+                else alert('Error al contactar a Koda');
+            } catch (err) {
+                alert('No se pudo conectar con el servidor del bot');
+            }
+        }
+    </script>
+</body>
+</html>
