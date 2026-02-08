@@ -1,17 +1,27 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
+const cors = require('cors'); // Para que la web tenga permiso de hablar con el bot
 const app = express();
-const cors = require('cors');
+
 app.use(cors());
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
-// Esto es para que la página de Vercel pueda avisarle al bot
+// --- ESTE ES EL PUNTO 1 ---
 app.get('/encender', (req, res) => {
-  client.channels.cache.first().send('¡Koda encendido desde la web! 🚀');
-  res.send('Acción ejecutada');
+  // Busca el primer canal de texto donde el bot pueda escribir
+  const canal = client.channels.cache.find(c => c.type === 0); 
+  
+  if (canal) {
+    canal.send('¡Koda activado desde la web! 🚀');
+    res.send('Acción ejecutada con éxito');
+  } else {
+    res.status(404).send('No encontré un canal para escribir');
+  }
 });
+// --------------------------
 
-// Mantener el bot vivo
 client.login(process.env.DISCORD_TOKEN);
-app.listen(3000, () => console.log('Servidor listo'));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('Servidor listo'));
