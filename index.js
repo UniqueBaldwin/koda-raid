@@ -24,4 +24,4 @@ app.get('/encender', (req, res) => {
 client.login(process.env.DISCORD_TOKEN);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('Servidor listo'));
+app.listen(PORT, () => console.log('Servidor listo')); 
