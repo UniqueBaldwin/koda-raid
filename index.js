@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-const CLIENT_ID = 'TU_CLIENT_ID_AQUÍ'; 
+const CLIENT_ID = '1469577414022795346'; 
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = 'https://koda-raid.onrender.com/auth/callback';
 
