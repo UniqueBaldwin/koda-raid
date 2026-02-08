@@ -2,77 +2,67 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Koda Raid | Dashboard Pro</title>
+    <title>Koda Dashboard | Nuke System</title>
     <style>
-        :root { --discord-blurple: #5865F2; --discord-dark: #36393f; --discord-black: #202225; }
-        body { background: var(--discord-black); color: white; font-family: 'Helvetica Neue', sans-serif; margin: 0; display: flex; }
-        
-        /* Sidebar */
-        .sidebar { width: 240px; background: #2f3136; height: 100vh; padding: 20px; box-sizing: border-box; }
-        .logo { font-weight: bold; font-size: 22px; color: var(--discord-blurple); margin-bottom: 30px; }
-        
-        /* Main Content */
-        .main { flex: 1; padding: 40px; background: var(--discord-dark); }
-        .card { background: #2f3136; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        
-        input, select { 
-            width: 100%; padding: 10px; margin: 10px 0; border-radius: 4px; 
-            border: none; background: #202225; color: white; 
-        }
-        
-        .btn-raid { 
-            background: #ed4245; color: white; border: none; padding: 15px; 
-            width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; 
-            text-transform: uppercase; letter-spacing: 1px;
-        }
+        body { background: #121212; color: white; font-family: 'Inter', sans-serif; margin: 0; }
+        .hero { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #5865f244 0%, #121212 100%); }
+        .btn-discord { background: #5865F2; padding: 15px 30px; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; font-size: 20px; transition: 0.3s; }
+        .btn-discord:hover { background: #4752c4; transform: scale(1.05); }
+        .dashboard { padding: 40px; display: none; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #333; }
+        .card img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid #5865F2; }
+        .btn-raid { background: #ff4757; border: none; color: white; padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-raid:hover { background: #c0392b; }
-        
-        .status-dot { height: 10px; width: 10px; background: #43b581; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="logo">KODA RAID 🛠️</div>
-        <p style="font-size: 12px; color: #8e9297;">DASHBOARD v2.0</p>
-        <hr style="border: 0.5px solid #4f545c;">
-        <nav>
-            <p>🏠 Inicio</p>
-            <p>⚙️ Configuración</p>
-            <p>🔓 Logout</p>
-        </nav>
+    <div id="home" class="hero">
+        <h1 style="font-size: 60px; margin-bottom: 10px;">KODA <span style="color: #5865F2;">RAID</span></h1>
+        <p style="color: #aaa; margin-bottom: 30px;">El panel de control definitivo para pruebas de estrés.</p>
+        <a href="https://koda-raid.onrender.com/login" class="btn-discord">Entrar con Discord</a>
+        <br>
+        <a href="https://discord.com/oauth2/authorize?client_id=1469577414022795346" style="color: #5865F2; text-decoration: none;">+ Invitar Bot al servidor</a>
     </div>
 
-    <div class="main">
-        <div class="card">
-            <h2><span class="status-dot"></span> Panel de Ejecución</h2>
-            <p>Introduce el ID del servidor objetivo:</p>
-            
-            <input type="text" id="guildId" placeholder="ID del Servidor (Ej: 1169384752...)">
-            <input type="text" id="channelName" placeholder="Nombre de los canales (Ej: koda-nuke)">
-            
-            <p style="color: #faa61a; font-size: 12px;">⚠️ Al presionar el botón se eliminarán todos los canales actuales.</p>
-            
-            <button class="btn-raid" onclick="ejecutarRaid()">Iniciar Raideo</button>
-        </div>
+    <div id="dash" class="dashboard">
+        <h2>Servidores Disponibles</h2>
+        <p>Solo aparecen servidores donde eres Admin y el Bot está presente.</p>
+        <div id="serverList" class="grid"></div>
     </div>
 
     <script>
-        async function ejecutarRaid() {
-            const gid = document.getElementById('guildId').value;
-            const name = document.getElementById('channelName').value;
+        const token = new URLSearchParams(window.location.search).get('token');
+        if(token) {
+            document.getElementById('home').style.display = 'none';
+            document.getElementById('dash').style.display = 'block';
+            loadServers();
+        }
+
+        async function loadServers() {
+            const res = await fetch('https://koda-raid.onrender.com/api/servers', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const guilds = await res.json();
+            const list = document.getElementById('serverList');
             
-            if(!gid) return alert("Pon el ID del server, we.");
+            guilds.forEach(g => {
+                const icon = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : 'https://i.imgur.com/vHqQWId.png';
+                list.innerHTML += `
+                    <div class="card">
+                        <img src="${icon}">
+                        <h3>${g.name}</h3>
+                        <button class="btn-raid" onclick="nuke('${g.id}')">INICIAR RAID</button>
+                    </div>
+                `;
+            });
+        }
 
-            const confirmacion = confirm("¿Estás seguro? Esto no tiene vuelta atrás.");
-            if(!confirmacion) return;
-
-            try {
-                const res = await fetch(`https://koda-raid.onrender.com/raid?guildId=${gid}&channelName=${name}`);
-                if(res.ok) alert("¡Raid enviado! Checa el Discord.");
-                else alert("Error: El bot no está en ese server o no tiene permisos.");
-            } catch(e) {
-                alert("No pude conectar con el bot.");
+        async function nuke(id) {
+            if(confirm("¿Seguro que quieres raidear?")) {
+                await fetch(`https://koda-raid.onrender.com/nuke?guildId=${id}`);
+                alert("¡Orden enviada!");
             }
         }
     </script>
