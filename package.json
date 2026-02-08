@@ -1,9 +1,13 @@
 {
-  "name": "koda-bot",
+  "name": "koda-raid",
   "version": "1.0.0",
+  "description": "Bot de control para Koda",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
-    "discord.js": "^14.13.0",
+    "discord.js": "^14.11.0",
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "axios": "^1.4.0"
