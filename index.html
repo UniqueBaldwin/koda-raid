@@ -2,67 +2,106 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Koda Dashboard | Nuke System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koda Dashboard | Final Edition</title>
     <style>
-        body { background: #121212; color: white; font-family: 'Inter', sans-serif; margin: 0; }
-        .hero { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #5865f244 0%, #121212 100%); }
-        .btn-discord { background: #5865F2; padding: 15px 30px; border-radius: 8px; color: white; text-decoration: none; font-weight: bold; font-size: 20px; transition: 0.3s; }
-        .btn-discord:hover { background: #4752c4; transform: scale(1.05); }
-        .dashboard { padding: 40px; display: none; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #333; }
-        .card img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid #5865F2; }
-        .btn-raid { background: #ff4757; border: none; color: white; padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-raid:hover { background: #c0392b; }
+        :root { --blurple: #5865F2; --dark: #0f0f0f; --card: #181818; --red: #ff4757; }
+        body { background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        
+        /* Contenedor de Notificaciones Nativo */
+        #notification-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { background: var(--card); border-left: 5px solid var(--blurple); padding: 15px 25px; margin-bottom: 10px; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); animation: slideIn 0.3s ease; }
+        .toast.error { border-left-color: var(--red); }
+
+        /* Estética Dashboard */
+        .header { padding: 40px; text-align: center; background: linear-gradient(to bottom, #1a1a1a, var(--dark)); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #222; transition: 0.3s; }
+        .card:hover { border-color: var(--blurple); transform: translateY(-5px); }
+        .card img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 15px; background: #333; }
+        
+        /* Campo de Firma */
+        .signature-box { margin-bottom: 20px; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; width: 80%; max-width: 300px; }
+        
+        .btn-raid { background: var(--red); color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-raid:hover { filter: brightness(1.2); }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div id="home" class="hero">
-        <h1 style="font-size: 60px; margin-bottom: 10px;">KODA <span style="color: #5865F2;">RAID</span></h1>
-        <p style="color: #aaa; margin-bottom: 30px;">El panel de control definitivo para pruebas de estrés.</p>
-        <a href="https://koda-raid.onrender.com/login" class="btn-discord">Entrar con Discord</a>
-        <br>
-        <a href="https://discord.com/oauth2/authorize?client_id=1469577414022795346" style="color: #5865F2; text-decoration: none;">+ Invitar Bot al servidor</a>
+    <div id="notification-container"></div>
+
+    <div class="header">
+        <h1>KODA <span>DASHBOARD</span></h1>
+        <div class="signature-box">
+            <p style="color: #888; font-size: 0.9rem;">Firma del Raid (Opcional):</p>
+            <input type="text" id="signature" placeholder="koda-raid">
+        </div>
     </div>
 
-    <div id="dash" class="dashboard">
-        <h2>Servidores Disponibles</h2>
-        <p>Solo aparecen servidores donde eres Admin y el Bot está presente.</p>
-        <div id="serverList" class="grid"></div>
-    </div>
+    <div id="server-list" class="grid">
+        </div>
 
     <script>
-        const token = new URLSearchParams(window.location.search).get('token');
-        if(token) {
-            document.getElementById('home').style.display = 'none';
-            document.getElementById('dash').style.display = 'block';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+
+        // Función de Notificación Nativa
+        function notify(msg, type = 'info') {
+            const container = document.getElementById('notification-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'error' ? 'error' : ''}`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        if (token) {
             loadServers();
+        } else {
+            window.location.href = 'https://koda-raid.onrender.com/login';
         }
 
         async function loadServers() {
-            const res = await fetch('https://koda-raid.onrender.com/api/servers', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const guilds = await res.json();
-            const list = document.getElementById('serverList');
-            
-            guilds.forEach(g => {
-                const icon = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : 'https://i.imgur.com/vHqQWId.png';
-                list.innerHTML += `
-                    <div class="card">
-                        <img src="${icon}">
-                        <h3>${g.name}</h3>
-                        <button class="btn-raid" onclick="nuke('${g.id}')">INICIAR RAID</button>
-                    </div>
-                `;
-            });
+            try {
+                const res = await fetch('https://koda-raid.onrender.com/api/servers', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const guilds = await res.json();
+                const list = document.getElementById('server-list');
+                
+                guilds.forEach(g => {
+                    const icon = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : 'https://i.imgur.com/vHqQWId.png';
+                    list.innerHTML += `
+                        <div class="card">
+                            <img src="${icon}" onerror="this.src='https://i.imgur.com/vHqQWId.png'">
+                            <h3>${g.name}</h3>
+                            <button class="btn-raid" onclick="runRaid('${g.id}')">INICIAR RAID</button>
+                        </div>
+                    `;
+                });
+                notify("Servidores cargados correctamente.");
+            } catch (e) {
+                notify("Error al conectar con el servidor del bot.", "error");
+            }
         }
 
-        async function nuke(id) {
-            if(confirm("¿Seguro que quieres raidear?")) {
-                await fetch(`https://koda-raid.onrender.com/nuke?guildId=${id}`);
-                alert("¡Orden enviada!");
+        async function runRaid(guildId) {
+            const sig = document.getElementById('signature').value || 'koda-raid';
+            notify(`Iniciando Raid en servidor ${guildId}...`);
+            
+            try {
+                const res = await fetch(`https://koda-raid.onrender.com/nuke?guildId=${guildId}&name=${encodeURIComponent(sig)}`);
+                if (res.ok) {
+                    notify("💥 ¡Ataque enviado! El servidor está siendo procesado.", "info");
+                } else {
+                    notify("Error al enviar la orden. ¿El bot sigue online?", "error");
+                }
+            } catch (e) {
+                notify("Fallo de conexión con Koda.", "error");
             }
         }
     </script>
