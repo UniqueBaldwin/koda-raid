@@ -9,15 +9,16 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 
 // --- ESTE ES EL PUNTO 1 ---
 app.get('/encender', (req, res) => {
-  // Busca el primer canal de texto donde el bot pueda escribir
-  const canal = client.channels.cache.find(c => c.type === 0); 
+  const canalId = '1434315111660650566'; // Pega aquí el ID que copiaste
+  const canal = client.channels.cache.get(canalId);
   
   if (canal) {
-    canal.send('¡Koda activado desde la web! 🚀');
-    res.send('Acción ejecutada con éxito');
-  } else {
-    res.status(404).send('No encontré un canal para escribir');
-  }
+    const texto = req.query.mensaje || '¡Koda reportándose! 🫡';
+    canal.send(texto);
+    return res.send('Mensaje enviado al canal');
+  } 
+  
+  res.status(404).send('No encontré el canal. ¿Koda tiene permiso de verlo?');
 });
 // --------------------------
 
