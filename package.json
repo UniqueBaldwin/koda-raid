@@ -1,11 +1,8 @@
 {
-  "name": "koda-raid",
-  "version": "1.0.0",
-  "description": "Bot de control para Koda",
+  "name": "koda-premium",
+  "version": "2.0.0",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "discord.js": "^14.11.0",
     "express": "^4.18.2",

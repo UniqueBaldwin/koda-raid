@@ -1,263 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koda Raid | Command Center</title>
+    <title>Koda | Premium Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #8b5cf6;
-            --primary-dark: #6d28d9;
-            --bg: #050505;
-            --surface: rgba(20, 20, 20, 0.8);
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #ffffff;
-            --danger: #ef4444;
-        }
-
-        * { box-sizing: border-box; }
+        :root { --primary: #8b5cf6; --bg: #09090b; --card: #18181b; --border: #27272a; --danger: #ef4444; }
+        body { background: var(--bg); color: #fafafa; font-family: 'Inter', sans-serif; margin: 0; display: flex; overflow-x: hidden; }
         
-        body {
-            background-color: var(--bg);
-            background-image: radial-gradient(circle at 50% -20%, #2e1065 0%, var(--bg) 60%);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding-top: 80px;
-            min-height: 100vh;
-        }
+        /* Sidebar */
+        .sidebar { width: 280px; height: 100vh; background: var(--card); border-right: 1px solid var(--border); padding: 30px 20px; position: fixed; z-index: 100; }
+        .logo { display: flex; align-items: center; gap: 12px; font-weight: 900; font-size: 1.2rem; margin-bottom: 40px; }
+        .logo img { width: 35px; border-radius: 8px; }
+        .nav-item { padding: 12px 15px; border-radius: 10px; color: #a1a1aa; text-decoration: none; display: flex; align-items: center; margin-bottom: 8px; transition: 0.2s; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background: #27272a; color: white; }
+        .nav-item.active { border-left: 4px solid var(--primary); background: rgba(139, 92, 246, 0.1); }
 
-        /* NAVBAR PRO (GLASS) */
-        .navbar {
-            position: fixed; top: 0; left: 0; width: 100%; height: 70px;
-            background: rgba(5, 5, 5, 0.7); backdrop-filter: blur(15px);
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 5%; z-index: 1000;
-        }
-
-        .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: white; }
-        .brand img { height: 40px; filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3)); }
-        .brand span { font-weight: 900; font-size: 1.5rem; letter-spacing: -1px; }
-        .brand span em { color: var(--primary); font-style: normal; }
-
-        .nav-links { display: flex; gap: 20px; align-items: center; }
-        .nav-link { color: #888; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: 0.3s; cursor: pointer; }
-        .nav-link:hover { color: white; }
-        .btn-logout { color: var(--danger); border: 1px solid rgba(239,68,68,0.3); padding: 6px 15px; border-radius: 6px; }
-        .btn-logout:hover { background: rgba(239,68,68,0.1); }
-
-        /* CONTAINER */
-        .container { max-width: 1100px; margin: 0 auto; padding: 20px; text-align: center; }
-
-        /* BANNER */
-        .banner-display {
-            width: 100%; max-height: 220px; object-fit: cover;
-            border-radius: 16px; margin-bottom: 40px;
-            border: 1px solid var(--border);
-            box-shadow: 0 20px 50px -20px rgba(0,0,0,0.8);
-        }
-
-        /* CONTROLS (INPUT) */
-        .controls-panel {
-            background: var(--surface); border: 1px solid var(--border);
-            padding: 30px; border-radius: 16px; margin-bottom: 40px;
-            backdrop-filter: blur(10px);
-            display: inline-block; width: 100%; max-width: 600px;
-        }
+        /* Main Content */
+        .content { margin-left: 280px; flex: 1; padding: 40px; }
+        .banner { width: 100%; height: 180px; object-fit: cover; border-radius: 15px; border: 1px solid var(--border); margin-bottom: 30px; }
         
-        .controls-panel h2 { margin-top: 0; font-size: 1.8rem; }
-        .controls-panel p { color: #888; margin-bottom: 20px; }
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
+        .s-card { background: var(--card); padding: 25px; border-radius: 15px; border: 1px solid var(--border); }
+        .s-card h4 { margin: 0; color: #71717a; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+        .s-card p { margin: 10px 0 0; font-size: 2rem; font-weight: 900; color: var(--primary); }
 
-        .input-sig {
-            background: #0a0a0a; border: 1px solid #333; color: white;
-            padding: 15px; border-radius: 8px; width: 100%;
-            font-size: 1rem; outline: none; transition: 0.3s;
-            text-align: center;
-        }
-        .input-sig:focus { border-color: var(--primary); box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+        /* Server Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .server-box { background: var(--card); border-radius: 20px; border: 1px solid var(--border); padding: 25px; transition: 0.3s; position: relative; }
+        .server-box:hover { border-color: var(--primary); transform: translateY(-5px); }
+        .s-head { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .s-head img { width: 60px; height: 60px; border-radius: 50%; border: 2px solid #3f3f46; }
 
-        /* GRID SERVERS */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; }
-        .card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 16px; padding: 25px; transition: 0.3s;
-            position: relative; overflow: hidden;
-        }
-        .card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 40px -10px rgba(139, 92, 246, 0.3); }
-        .card img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 15px; background: #222; border: 2px solid #333; }
-        .card h3 { margin: 0 0 20px 0; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn { border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; transition: 0.2s; font-size: 0.8rem; }
+        .btn-nuke { background: var(--danger); color: white; margin-bottom: 12px; }
+        .btn-premium { background: #27272a; color: white; width: 48%; border: 1px solid #3f3f46; }
+        .btn-restore { background: var(--primary); }
 
-        .btn-raid {
-            background: var(--primary); color: white; border: none;
-            padding: 12px; width: 100%; border-radius: 8px;
-            font-weight: 700; cursor: pointer; text-transform: uppercase;
-            letter-spacing: 1px; transition: 0.2s;
-        }
-        .btn-raid:hover { background: var(--primary-dark); transform: scale(1.02); }
+        /* Modal */
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(5px); }
+        .modal { background: var(--card); padding: 40px; border-radius: 20px; width: 450px; text-align: center; border: 1px solid var(--border); }
 
-        /* TOAST */
-        #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999; }
-        .toast {
-            background: #111; border-left: 4px solid var(--primary);
-            padding: 15px 25px; margin-top: 10px; border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.3s;
-            display: flex; align-items: center; gap: 10px; font-weight: 600;
-        }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-        /* HERO / LOGIN VIEW */
-        #login-view { height: 70vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        #login-view h1 { font-size: 3.5rem; margin: 0; letter-spacing: -2px; line-height: 1; }
-        #login-view p { color: #aaa; font-size: 1.2rem; max-width: 500px; margin-top: 20px; }
+        input { background: #09090b; border: 1px solid #27272a; color: white; padding: 15px; border-radius: 10px; width: 100%; margin-bottom: 25px; outline: none; text-align: center; }
+        input:focus { border-color: var(--primary); }
     </style>
 </head>
 <body>
 
-    <nav class="navbar">
-        <a href="#" class="brand">
-            <img src="logo.png" onerror="this.style.display='none'">
-            <span>KODA <em>RAID</em></span>
-        </a>
-        <div class="nav-links" id="menu-items">
-            </div>
-    </nav>
-
-    <div id="toast-container"></div>
-
-    <div class="container" id="dash-view" style="display: none;">
-        <img src="banner.png" class="banner-display" onerror="this.style.display='none'">
-
-        <div class="controls-panel">
-            <h2 id="txt-panel">CONTROL PANEL</h2>
-            <p id="txt-desc">Configure the attack parameters.</p>
-            <input type="text" id="sig" class="input-sig" placeholder="Signature (Default: koda-raid)">
+    <div class="sidebar">
+        <div class="logo">
+            <img src="logo.png" onerror="this.src='https://i.imgur.com/vHqQWId.png'">
+            KODA PREMIUM
         </div>
-
-        <div id="server-list" class="grid"></div>
+        <a class="nav-item active">Dashboard</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=1469577414022795346" target="_blank" class="nav-item">Invite Bot</a>
+        <a onclick="logout()" class="nav-item" style="margin-top: 50vh; color: var(--danger);">Logout</a>
     </div>
 
-    <div class="container" id="login-view">
-        <h1>KODA <span style="color:var(--primary)">RAID</span></h1>
-        <p id="txt-welcome">The ultimate discord management tool.</p>
-        <br>
-        <a href="https://koda-raid.onrender.com/login" class="btn-raid" style="width: auto; padding: 15px 40px; text-decoration: none;">
-            LOGIN WITH DISCORD
-        </a>
+    <div class="content">
+        <img src="banner.png" class="banner" onerror="this.style.display='none'">
+        
+        <div class="stats">
+            <div class="s-card"><h4>Servers Available</h4><p id="count">0</p></div>
+            <div class="s-card"><h4>Koda Version</h4><p>2.0.4</p></div>
+            <div class="s-card"><h4>Cloud Backups</h4><p id="bk-count">Active</p></div>
+        </div>
+
+        <input type="text" id="sig" placeholder="Set Attack Signature (English)...">
+
+        <div class="grid" id="list"></div>
+    </div>
+
+    <div class="overlay" id="modal">
+        <div class="modal">
+            <h1 style="color:var(--danger); margin:0;">CONFIRM ATTACK</h1>
+            <p style="color:#71717a; margin: 20px 0;">This will purge all channels and categories. You can restore later if you have a backup.</p>
+            <div style="display:flex; gap:15px;">
+                <button class="btn" style="background:#27272a; color:white;" onclick="closeM()">CANCEL</button>
+                <button class="btn btn-nuke" id="confirm-btn">EXECUTE</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // --- DETECCIÓN DE IDIOMA ---
-        const userLang = navigator.language || navigator.userLanguage;
-        const isEsp = userLang.startsWith('es');
+        const token = localStorage.getItem('koda_token') || new URLSearchParams(window.location.search).get('token');
+        if(!token) window.location.href = 'https://koda-raid.onrender.com/login';
+        else localStorage.setItem('koda_token', token);
 
-        const txt = {
-            es: {
-                panel: "PANEL DE CONTROL",
-                desc: "Configura los parámetros del ataque.",
-                ph: "Firma (Ej: Hacked by Koda)",
-                welcome: "La herramienta definitiva de gestión de servidores.",
-                loginBtn: "ENTRAR CON DISCORD",
-                invite: "Invitar Bot",
-                logout: "Cerrar Sesión",
-                raidBtn: "INICIAR RAID",
-                toast: "🚀 Ataque iniciado..."
-            },
-            en: {
-                panel: "CONTROL PANEL",
-                desc: "Configure the attack parameters.",
-                ph: "Signature (Ex: Hacked by Koda)",
-                welcome: "The ultimate discord management tool.",
-                loginBtn: "LOGIN WITH DISCORD",
-                invite: "Invite Bot",
-                logout: "Logout",
-                raidBtn: "START RAID",
-                toast: "🚀 Attack initiated..."
-            }
+        let target = null;
+
+        async function init() {
+            const res = await fetch('https://koda-raid.onrender.com/api/servers', { headers: { 'Authorization': `Bearer ${token}` } });
+            const guilds = await res.json();
+            document.getElementById('count').innerText = guilds.length;
+            const list = document.getElementById('list');
+            
+            guilds.forEach(g => {
+                const icon = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : 'https://i.imgur.com/vHqQWId.png';
+                list.innerHTML += `
+                    <div class="server-box">
+                        <div class="s-head">
+                            <img src="${icon}">
+                            <div><h3 style="margin:0">${g.name}</h3><small style="color:#555">${g.id}</small></div>
+                        </div>
+                        <button class="btn btn-nuke" onclick="openM('${g.id}')">NUKE SERVER</button>
+                        <div style="display:flex; justify-content:space-between">
+                            <button class="btn btn-premium" onclick="action('backup','${g.id}')">BACKUP</button>
+                            <button class="btn btn-premium btn-restore" onclick="action('restore','${g.id}')">RESTORE</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openM(id) { target = id; document.getElementById('modal').style.display = 'flex'; }
+        function closeM() { document.getElementById('modal').style.display = 'none'; }
+
+        document.getElementById('confirm-btn').onclick = async () => {
+            const sig = document.getElementById('sig').value;
+            closeM();
+            await fetch(`https://koda-raid.onrender.com/nuke?guildId=${target}&name=${encodeURIComponent(sig)}`);
         };
 
-        const t = isEsp ? txt.es : txt.en;
-
-        // --- APLICAR TEXTOS ---
-        document.getElementById('txt-panel').innerText = t.panel;
-        document.getElementById('txt-desc').innerText = t.desc;
-        document.getElementById('sig').placeholder = t.ph;
-        document.getElementById('txt-welcome').innerText = t.welcome;
-        document.querySelector('#login-view .btn-raid').innerText = t.loginBtn;
-
-        // --- LÓGICA ---
-        const params = new URLSearchParams(window.location.search);
-        let token = params.get('token');
-        if(token) {
-            localStorage.setItem('koda_token', token);
-            window.history.replaceState({}, document.title, "/");
-        } else {
-            token = localStorage.getItem('koda_token');
+        async function action(type, id) {
+            await fetch(`https://koda-raid.onrender.com/${type}?guildId=${id}`);
+            alert(type.toUpperCase() + " COMPLETE");
         }
 
-        const loginView = document.getElementById('login-view');
-        const dashView = document.getElementById('dash-view');
-        const menu = document.getElementById('menu-items');
-
-        if(token) {
-            loginView.style.display = 'none';
-            dashView.style.display = 'block';
-            menu.innerHTML = `
-                <a href="https://discord.com/oauth2/authorize?client_id=1469577414022795346" target="_blank" class="nav-link">${t.invite}</a>
-                <a onclick="logout()" class="nav-link btn-logout">${t.logout}</a>
-            `;
-            loadServers();
-        } else {
-            menu.innerHTML = `<a href="https://koda-raid.onrender.com/login" class="nav-link" style="color:var(--primary)">Login</a>`;
-        }
-
-        async function loadServers() {
-            try {
-                const res = await fetch('https://koda-raid.onrender.com/api/servers', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const guilds = await res.json();
-                const list = document.getElementById('server-list');
-
-                if(guilds.length === 0) {
-                    list.innerHTML = `<p style="color:#666;">No servers found / No hay servidores.</p>`;
-                    return;
-                }
-
-                guilds.forEach(g => {
-                    const icon = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : 'https://i.imgur.com/vHqQWId.png';
-                    list.innerHTML += `
-                        <div class="card">
-                            <img src="${icon}" onerror="this.src='https://i.imgur.com/vHqQWId.png'">
-                            <h3>${g.name}</h3>
-                            <button class="btn-raid" onclick="raid('${g.id}')">${t.raidBtn}</button>
-                        </div>
-                    `;
-                });
-            } catch(e) {
-                logout();
-            }
-        }
-
-        async function raid(id) {
-            const sig = document.getElementById('sig').value || 'koda-raid';
-            showToast(t.toast);
-            await fetch(`https://koda-raid.onrender.com/nuke?guildId=${id}&name=${encodeURIComponent(sig)}`);
-        }
-
-        function showToast(msg) {
-            const c = document.getElementById('toast-container');
-            const d = document.createElement('div');
-            d.className = 'toast'; d.innerText = msg;
-            c.appendChild(d);
-            setTimeout(() => d.remove(), 3000);
-        }
-
-        function logout() {
-            localStorage.removeItem('koda_token');
-            window.location.href = '/';
-        }
+        init();
+        function logout() { localStorage.removeItem('koda_token'); window.location.href = '/'; }
     </script>
 </body>
 </html>
