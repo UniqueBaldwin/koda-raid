@@ -3,302 +3,273 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koda | Advanced Support Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <title>Koda | Pro Support Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* CSS RESET & VARIABLES */
         :root {
-            --p: #7c3aed; --p-soft: rgba(124, 58, 237, 0.1);
-            --bg: #050507; --s: #0f0f13; --b: #1d1d26;
-            --text: #ffffff; --text-dim: #94a3b8;
-            --success: #10b981; --danger: #ef4444;
-            --sidebar-w: 280px;
+            --bg: #09090b; --surface: #121217; --border: #27272a;
+            --p: #6366f1; --p-dim: rgba(99, 102, 241, 0.1);
+            --t: #fafafa; --t-dim: #a1a1aa;
+            --danger: #ef4444; --success: #22c55e;
+            --sidebar-w: 260px;
         }
 
-        * { box-sizing: border-box; transition: all 0.2s ease; }
+        * { box-sizing: border-box; outline: none; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
         body { 
-            background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg); color: var(--t); font-family: 'Plus Jakarta Sans', sans-serif;
             margin: 0; display: flex; height: 100vh; overflow: hidden;
         }
 
-        /* PANTALLA DE CARGA / LOGIN */
-        #auth-overlay {
-            position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 24px; z-index: 100;
+        }
+        .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+        .logo-box { width: 32px; height: 32px; background: var(--p); border-radius: 8px; display: grid; place-items: center; font-weight: 900; }
+        
+        .nav-link {
+            padding: 12px 16px; border-radius: 10px; cursor: pointer; color: var(--t-dim);
+            margin-bottom: 4px; display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 0.9rem;
+        }
+        .nav-link:hover { background: var(--border); color: var(--t); }
+        .nav-link.active { background: var(--p-dim); color: var(--p); border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .user-pill {
+            margin-top: auto; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 14px;
+            display: flex; align-items: center; gap: 12px; border: 1px solid var(--border);
+        }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #222; }
+
+        /* --- MAIN VIEW --- */
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .content-view { display: none; height: 100%; padding: 40px; overflow-y: auto; animation: slideUp 0.3s ease; }
+        .content-view.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- TICKETS INTERFACE --- */
+        .ticket-grid { display: grid; grid-template-columns: 320px 1fr; height: 100%; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+        .ticket-list { background: rgba(0,0,0,0.2); border-right: 1px solid var(--border); overflow-y: auto; }
+        .ticket-item { padding: 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .ticket-item:hover { background: var(--border); }
+        .ticket-item.active { background: var(--p-soft); border-left: 4px solid var(--p); }
+
+        .chat-area { display: flex; flex-direction: column; background: var(--surface); }
+        .chat-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .messages { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .bubble { max-width: 70%; padding: 12px 16px; border-radius: 14px; font-size: 0.95rem; line-height: 1.5; }
+        .bubble.support { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
+        .bubble.client { align-self: flex-start; background: var(--border); border-bottom-left-radius: 4px; }
+
+        .chat-input { padding: 20px; border-top: 1px solid var(--border); display: flex; gap: 12px; }
+        textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; padding: 12px; resize: none; font-family: inherit; }
+        
+        /* --- DASHBOARD WIDGETS --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .card { background: var(--surface); border: 1px solid var(--border); padding: 24px; border-radius: 20px; }
+        .stat-val { font-size: 2.5rem; font-weight: 800; margin-top: 8px; }
+
+        /* --- BOTONES & UI --- */
+        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; }
+        .btn-p { background: var(--p); color: white; }
+        .btn-p:hover { background: #4f46e5; transform: translateY(-2px); }
+
+        #login-overlay {
+            position: fixed; inset: 0; background: var(--bg); z-index: 1000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .login-card {
-            background: var(--s); padding: 48px; border-radius: 24px; border: 1px solid var(--b);
-            text-align: center; max-width: 400px; width: 90%;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
 
-        /* SIDEBAR PRO */
-        .sidebar {
-            width: var(--sidebar-w); background: var(--s); border-right: 1px solid var(--b);
-            display: flex; flex-direction: column; padding: 24px;
-        }
-        .nav-item {
-            padding: 14px 18px; border-radius: 12px; cursor: pointer; color: var(--text-dim);
-            margin-bottom: 8px; display: flex; align-items: center; gap: 12px; font-weight: 600;
-        }
-        .nav-item:hover { background: var(--b); color: var(--text); }
-        .nav-item.active { background: var(--p-soft); color: var(--p); border: 1px solid rgba(124, 58, 237, 0.3); }
-
-        /* MAIN CONTENT AREA */
-        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .view { display: none; height: 100%; padding: 40px; overflow-y: auto; }
-        .view.active { display: block; animation: slideUp 0.4s ease-out; }
-
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* TICKETS & CHAT (LA PARTE DIFÍCIL) */
-        .chat-container { display: flex; height: calc(100vh - 80px); background: var(--s); border-radius: 20px; border: 1px solid var(--b); margin: 20px; overflow: hidden; }
-        .ticket-list { width: 320px; border-right: 1px solid var(--b); overflow-y: auto; background: rgba(0,0,0,0.2); }
-        .chat-main { flex: 1; display: flex; flex-direction: column; position: relative; }
-
-        .ticket-card { padding: 20px; border-bottom: 1px solid var(--b); cursor: pointer; }
-        .ticket-card:hover { background: var(--b); }
-        .ticket-card.active { background: var(--p-soft); border-left: 4px solid var(--p); }
-
-        .messages { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-        .bubble { max-width: 75%; padding: 14px 18px; border-radius: 18px; font-size: 0.95rem; line-height: 1.5; }
-        .bubble.client { align-self: flex-start; background: var(--b); border-bottom-left-radius: 4px; }
-        .bubble.support { align-self: flex-end; background: var(--p); border-bottom-right-radius: 4px; }
-
-        .input-box { padding: 24px; border-top: 1px solid var(--b); display: flex; gap: 15px; background: var(--s); }
-        textarea { 
-            flex: 1; background: var(--bg); border: 1px solid var(--b); border-radius: 12px;
-            padding: 12px 16px; color: white; resize: none; font-family: inherit; font-size: 1rem;
-        }
-
-        /* DASHBOARD WIDGETS */
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 40px; }
-        .card { background: var(--s); border: 1px solid var(--b); padding: 24px; border-radius: 20px; }
-
-        /* BOTONES */
-        .btn-p { 
-            background: var(--p); color: white; border: none; padding: 12px 24px; 
-            border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 1rem;
-        }
-        .btn-p:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(124, 58, 237, 0.5); }
-
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
+        /* Responsive */
+        @media (max-width: 1024px) {
             .sidebar { width: 80px; padding: 15px; }
-            .nav-text { display: none; }
-            .ticket-list { width: 0; display: none; }
-            .view { padding: 20px; }
+            .nav-text, .user-details { display: none; }
+            .content-view { padding: 20px; }
         }
     </style>
 </head>
 <body>
 
-    <div id="auth-overlay">
-        <div class="login-card">
-            <h1 style="font-size: 2.5rem; margin-bottom: 8px;">KODA <span style="color:var(--p)">CRM</span></h1>
-            <p style="color: var(--text-dim); margin-bottom: 32px;">Panel de Soporte Profesional</p>
-            <button class="btn-p" onclick="window.location.href='/login'">Iniciar Sesión con Discord</button>
-        </div>
+    <div id="login-overlay">
+        <h1 style="font-size: 3rem; font-weight: 900; letter-spacing: -2px; margin-bottom: 10px;">KODA<span style="color:var(--p)">.</span></h1>
+        <p style="color: var(--t-dim); margin-bottom: 40px;">Professional Support Infrastructure</p>
+        <button class="btn btn-p" onclick="window.location.href='/login'" style="padding: 16px 32px; font-size: 1.1rem;">
+            AUTHENTICATE WITH DISCORD
+        </button>
     </div>
 
-    <div class="sidebar">
-        <div style="margin-bottom: 40px; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 32px; height: 32px; background: var(--p); border-radius: 8px;"></div>
-            <span style="font-weight: 800; font-size: 1.2rem;">PRO</span>
+    <nav class="sidebar">
+        <div class="logo-area">
+            <div class="logo-box">K</div>
+            <span style="font-weight: 800; font-size: 1.1rem;" class="nav-text">Koda Pro</span>
         </div>
 
-        <div class="nav-item active" onclick="changeTab('home', this)">🏠 <span class="nav-text">Dashboard</span></div>
-        <div class="nav-item" onclick="changeTab('tickets', this)">📩 <span class="nav-text">Tickets Pool</span></div>
-        <div class="nav-item" onclick="changeTab('setup', this)">⚙️ <span class="nav-text">Bot Setup</span></div>
-        <div id="admin-nav" style="display:none;" class="nav-item" onclick="changeTab('admin', this)">👑 <span class="nav-text">Admin Panel</span></div>
+        <div class="nav-link active" onclick="tab('home', this)">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span class="nav-text">Dashboard</span>
+        </div>
+        <div class="nav-link" onclick="tab('tickets', this)">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+            <span class="nav-text">Tickets Pool</span>
+        </div>
+        <div class="nav-link" onclick="tab('setup', this)">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="nav-text">Configuration</span>
+        </div>
 
-        <div style="margin-top: auto; padding: 15px; border-top: 1px solid var(--b); display: flex; align-items: center; gap: 10px;">
-            <img id="u-avatar" src="" style="width: 35px; border-radius: 50%;">
-            <div style="overflow: hidden;">
-                <div id="u-name" style="font-weight: 800; font-size: 0.85rem; white-space: nowrap; text-overflow: ellipsis;">---</div>
-                <div id="u-role" style="font-size: 0.6rem; color: var(--p); font-weight: 800; text-transform: uppercase;">---</div>
+        <div id="owner-badge" style="display:none; margin-top: 20px; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 10px; font-size: 0.7rem; font-weight: 800; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+            OWNER MODE ACTIVE
+        </div>
+
+        <div class="user-pill">
+            <img id="u-avatar" src="" class="avatar">
+            <div class="user-details">
+                <div id="u-name" style="font-weight: 700; font-size: 0.85rem;">User</div>
+                <div id="u-role" style="font-size: 0.65rem; color: var(--t-dim);">Standard</div>
             </div>
+            <div onclick="logout()" style="margin-left: auto; cursor: pointer; opacity: 0.5;">🚪</div>
         </div>
-    </div>
+    </nav>
 
     <main>
-        <section id="view-home" class="view active">
-            <h1>Hola, <span id="u-greet" style="color:var(--p)">...</span> 👋</h1>
-            <div class="stats-row">
-                <div class="card"><h3>Pendientes</h3><p id="s-pending" style="font-size: 2.5rem; font-weight: 800; margin: 0;">0</p></div>
-                <div class="card"><h3>Atendiendo</h3><p id="s-active" style="font-size: 2.5rem; font-weight: 800; margin: 0;">0</p></div>
-                <div class="card"><h3>Agentes</h3><p id="s-agents" style="font-size: 2.5rem; font-weight: 800; margin: 0;">0</p></div>
+        <section id="view-home" class="content-view active">
+            <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; margin: 0;">Overview</h1>
+            <p style="color: var(--t-dim); margin-bottom: 40px;">Sincronización en tiempo real con Discord.</p>
+
+            <div class="stats-grid">
+                <div class="card">
+                    <span style="color: var(--t-dim); font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Active Tickets</span>
+                    <div id="stat-tickets" class="stat-val">0</div>
+                </div>
+                <div class="card">
+                    <span style="color: var(--t-dim); font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Team Members</span>
+                    <div id="stat-agents" class="stat-val">0</div>
+                </div>
+                <div class="card">
+                    <span style="color: var(--t-dim); font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">System Logs</span>
+                    <div id="stat-logs" class="stat-val">0</div>
+                </div>
             </div>
-            <div class="card">
-                <h3>Actividad Reciente</h3>
-                <div id="log-list" style="font-size: 0.85rem; color: var(--text-dim);">No hay eventos registrados aún...</div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="margin-top: 0;">Recent Logs</h3>
+                <div id="log-container" style="display: flex; flex-direction: column; gap: 8px; font-family: monospace; font-size: 0.85rem; color: var(--t-dim);">
+                    </div>
             </div>
         </section>
 
-        <section id="view-tickets" class="view">
-            <div class="chat-container">
+        <section id="view-tickets" class="content-view" style="padding: 20px;">
+            <div class="ticket-grid">
                 <div class="ticket-list" id="t-list">
                     </div>
-                <div class="chat-main">
-                    <div id="chat-welcome" style="position: absolute; inset: 0; background: var(--s); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5;">
-                        <svg width="60" height="60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                        <p>Selecciona un ticket para comenzar</p>
+                <div class="chat-area">
+                    <div id="chat-empty" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0.2;">
+                        <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                        <p>Selecciona un ticket para responder</p>
                     </div>
-                    <div class="messages" id="msg-area"></div>
-                    <div class="input-box">
-                        <textarea id="reply-text" placeholder="Escribe tu respuesta... (Koda corregirá la ortografía automáticamente)"></textarea>
-                        <button class="btn-p" onclick="sendReply()">ENVIAR</button>
+                    <div id="chat-active" style="display:none; flex:1; flex-direction:column;">
+                        <div class="chat-header">
+                            <span id="chat-target-user" style="font-weight: 700;">---</span>
+                            <div class="btn btn-p" style="font-size: 0.7rem; padding: 4px 12px; background: var(--danger);">Close Ticket</div>
+                        </div>
+                        <div class="messages" id="msg-area"></div>
+                        <div class="chat-input">
+                            <textarea id="reply-box" placeholder="Escribe tu respuesta... Koda la corregirá." rows="2"></textarea>
+                            <button class="btn btn-p" onclick="sendReply()">SEND</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="view-setup" class="view">
-            <h1>Configuración del Bot</h1>
-            <div style="display: grid; grid-template-columns: 1fr 400px; gap: 40px;">
-                <div class="card">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 700;">Título del Embed</label>
-                    <input type="text" id="cfg-title" style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--b); color:white; border-radius:8px; margin-bottom:20px;">
-                    
-                    <label style="display: block; margin-bottom: 8px; font-weight: 700;">Descripción Principal</label>
-                    <textarea id="cfg-desc" style="width:100%; height:100px; padding:12px; background:var(--bg); border:1px solid var(--b); color:white; border-radius:8px; margin-bottom:20px;"></textarea>
-                    
-                    <label style="display: block; margin-bottom: 8px; font-weight: 700;">Color de Marca (HEX)</label>
-                    <input type="color" id="cfg-color" value="#6366f1" style="width:100%; height:50px; border:none; background:none; cursor:pointer;">
-                    
-                    <button class="btn-p" style="width: 100%; margin-top: 30px;" onclick="saveConfig()">Sincronizar con Discord</button>
-                </div>
-                <div style="padding: 20px; background: #313338; border-radius: 8px; height: fit-content; border-left: 4px solid var(--p);">
-                    <div style="font-weight: 700; margin-bottom: 8px;" id="prev-title">Soporte Koda</div>
-                    <div style="font-size: 0.9rem; color: #dcddde;" id="prev-desc">Haz clic en el botón para abrir un ticket.</div>
-                    <div style="margin-top: 15px; background: #4e5058; color: white; padding: 6px 16px; border-radius: 3px; display: inline-block; font-size: 0.85rem;">📩 Abrir Ticket</div>
-                </div>
+        <section id="view-setup" class="content-view">
+            <h1 style="font-size: 2rem; font-weight: 800;">Bot Setup</h1>
+            <div style="max-width: 600px; margin-top: 32px;" class="card">
+                <label style="display:block; margin-bottom:8px; font-weight:700;">Embed Title</label>
+                <input type="text" id="cfg-title" style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--border); color:white; border-radius:10px; margin-bottom:24px;">
+                
+                <label style="display:block; margin-bottom:8px; font-weight:700;">Main Description</label>
+                <textarea id="cfg-desc" style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--border); color:white; border-radius:10px; height:100px; margin-bottom:24px;"></textarea>
+                
+                <button class="btn btn-p" onclick="updateConfig()" style="width:100%; justify-content:center;">APPLY CHANGES</button>
             </div>
         </section>
     </main>
 
     <script>
-        // --- LÓGICA DEL FRONTEND (MASIVA) ---
         let state = {
             token: null,
             user: null,
-            currentTicket: null,
-            data: {}
+            currentTicketId: null,
+            data: null
         };
 
-        async function init() {
-            const params = new URLSearchParams(window.location.search);
-            state.token = params.get('token') || localStorage.getItem('koda_token');
+        // INICIALIZACIÓN
+        async function start() {
+            const urlParams = new URLSearchParams(window.location.search);
+            state.token = urlParams.get('token') || localStorage.getItem('koda_token');
 
-            if (!state.token) {
-                document.getElementById('auth-overlay').style.display = 'flex';
-                return;
+            if (state.token) {
+                document.getElementById('login-overlay').style.display = 'none';
+                localStorage.setItem('koda_token', state.token);
+                window.history.replaceState({}, document.title, "/"); // Limpia la URL
+                await refreshData();
+                setInterval(refreshData, 5000); // Polling cada 5s
             }
-
-            document.getElementById('auth-overlay').style.display = 'none';
-            localStorage.setItem('koda_token', state.token);
-            window.history.replaceState({}, document.title, "/"); // Limpia URL
-
-            await fetchData();
-            setInterval(fetchData, 4000); // Polling cada 4 segs
         }
 
-        async function fetchData() {
+        async function refreshData() {
             try {
-                const res = await fetch('/api/status', {
+                const res = await fetch('/api/me', {
                     headers: { 'Authorization': state.token }
                 });
-                if (!res.ok) throw new Error("Unauthorized");
-                const data = await res.json();
-                
-                state.user = data.user;
-                state.data = data;
+                if (!res.ok) throw "Session Expired";
+                state.data = await res.json();
                 renderUI();
             } catch (e) {
-                localStorage.removeItem('koda_token');
-                window.location.reload();
+                logout();
             }
         }
 
         function renderUI() {
-            // Perfil
-            document.getElementById('u-name').innerText = state.user.username;
-            document.getElementById('u-greet').innerText = state.user.username;
-            document.getElementById('u-avatar').src = `https://cdn.discordapp.com/avatars/${state.user.id}/${state.user.avatar}.png`;
-            document.getElementById('u-role').innerText = state.user.role;
+            const d = state.data;
+            document.getElementById('u-name').innerText = d.user.username;
+            document.getElementById('u-role').innerText = d.user.role;
+            document.getElementById('u-avatar').src = `https://cdn.discordapp.com/avatars/${d.user.id}/${d.user.avatar}.png`;
             
-            if(state.user.role === 'OWNER') document.getElementById('admin-nav').style.display = 'flex';
+            if (d.user.role === 'OWNER') document.getElementById('owner-badge').style.display = 'block';
 
-            // Stats
-            document.getElementById('s-pending').innerText = state.data.stats.pending;
-            document.getElementById('s-active').innerText = state.data.stats.active;
-            document.getElementById('s-agents').innerText = state.data.stats.agents;
+            document.getElementById('stat-tickets').innerText = d.stats.tickets;
+            document.getElementById('stat-agents').innerText = d.stats.agents;
+            document.getElementById('stat-logs').innerText = d.stats.logs;
 
-            // Render Tickets
-            const tList = document.getElementById('t-list');
-            tList.innerHTML = state.data.tickets.map(t => `
-                <div class="ticket-card ${t.id === state.currentTicket ? 'active' : ''}" onclick="selectTicket('${t.id}')">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>${t.userName}</strong>
-                        <span style="font-size:0.6rem; background:var(--b); padding:2px 6px; border-radius:10px;">${t.status}</span>
-                    </div>
-                    <div style="font-size:0.75rem; color:var(--text-dim); margin-top:5px;">Ticket ID: ${t.id}</div>
-                </div>
-            `).join('');
-
-            if(state.currentTicket) renderMessages();
+            // Logs
+            // document.getElementById('log-container').innerHTML = ... (lógica de logs)
         }
 
-        function selectTicket(id) {
-            state.currentTicket = id;
-            document.getElementById('chat-welcome').style.display = 'none';
-            renderMessages();
-        }
-
-        function renderMessages() {
-            const ticket = state.data.tickets.find(t => t.id === state.currentTicket);
-            if(!ticket) return;
-
-            const area = document.getElementById('msg-area');
-            const shouldScroll = area.scrollTop + area.clientHeight + 100 >= area.scrollHeight;
-
-            area.innerHTML = ticket.messages.map(m => `
-                <div class="bubble ${m.type}">
-                    ${m.content}
-                    <div style="font-size:0.65rem; opacity:0.5; margin-top:5px;">${m.author} • ${new Date(m.timestamp).toLocaleTimeString()}</div>
-                </div>
-            `).join('');
-
-            if(shouldScroll) area.scrollTop = area.scrollHeight;
-        }
-
-        async function sendReply() {
-            const txt = document.getElementById('reply-text');
-            if(!txt.value || !state.currentTicket) return;
-
-            const res = await fetch('/api/reply', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': state.token 
-                },
-                body: JSON.stringify({ ticketId: state.currentTicket, message: txt.value })
-            });
-
-            if(res.ok) {
-                txt.value = '';
-                fetchData();
-            }
-        }
-
-        function changeTab(name, el) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        function tab(name, el) {
+            document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             document.getElementById('view-' + name).classList.add('active');
             el.classList.add('active');
         }
 
-        init();
+        function logout() {
+            localStorage.removeItem('koda_token');
+            window.location.reload();
+        }
+
+        async function updateConfig() {
+            const title = document.getElementById('cfg-title').value;
+            const description = document.getElementById('cfg-desc').value;
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': state.token },
+                body: JSON.stringify({ title, description })
+            });
+            alert("Sincronizado con Koda Server.");
+        }
+
+        start();
     </script>
 </body>
 </html>
