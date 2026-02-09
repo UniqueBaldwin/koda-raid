@@ -3,134 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koda Pro | Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>Koda Support | Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
-        .chat-bubble-client { background: #2d333b; border-bottom-left-radius: 2px; }
-        .chat-bubble-support { background: #5865f2; border-bottom-right-radius: 2px; }
+        :root { --p: #6366f1; --bg: #0b0f1a; --card: #161c2d; --border: #2d3748; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: white; margin:0; display: flex; }
+        
+        /* Sidebar Estilo Mobile/PC */
+        .sidebar { width: 260px; height: 100vh; background: var(--card); border-right: 1px solid var(--border); padding: 25px; position: fixed; transition: 0.3s; }
+        .nav-link { padding: 12px; border-radius: 10px; cursor: pointer; display: block; margin-bottom: 5px; color: #94a3b8; text-decoration: none; }
+        .nav-link:hover, .nav-link.active { background: rgba(99, 102, 241, 0.1); color: var(--p); }
+
+        /* Contenido Principal */
+        .main { margin-left: 260px; padding: 40px; width: 100%; }
+        .grid-setup { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+
+        /* Live Preview Discord */
+        .discord-preview { background: #313338; border-radius: 8px; padding: 15px; border-left: 4px solid var(--p); max-width: 400px; }
+        .discord-btn { background: #5865f2; color: white; padding: 8px 16px; border-radius: 3px; font-size: 0.8rem; margin-top: 10px; border:none; }
+
+        /* Estilos de inputs */
+        input, select { background: #0b0f1a; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 8px; width: 100%; margin-top: 8px; }
+        .btn-save { background: var(--p); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: 800; width: 100%; margin-top: 20px; cursor: pointer; }
+
+        /* Modal para agregar Support */
+        .admin-section { background: rgba(99, 102, 241, 0.05); border: 1px dashed var(--p); padding: 20px; border-radius: 15px; margin-top: 30px; }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); width: 0; padding: 0; }
+            .main { margin-left: 0; padding: 20px; }
+            .grid-setup { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
-<body class="bg-[#0d1117] text-gray-200 font-sans h-screen flex flex-col overflow-hidden">
+<body>
 
-    <header class="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-[#161b22]">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-bold">K</div>
-            <h1 class="font-bold tracking-tight">KODA <span class="text-indigo-500">SUPPORT</span></h1>
+    <div class="sidebar">
+        <h2 style="font-weight: 800; color: var(--p);">KODA <small style="color:white; font-size:0.6rem">SUPPORT</small></h2>
+        <div class="nav-link active" onclick="showTab('setup')">⚙️ Setup Bot</div>
+        <div class="nav-link" onclick="showTab('tickets')">📩 Tickets Pool</div>
+        <div id="admin-menu" style="display:none;">
+            <div class="nav-link" onclick="showTab('admin')" style="color:#f472b6">👑 Admin Panel</div>
         </div>
-        <div id="status" class="flex items-center gap-4">
-            <span class="text-xs bg-green-500/10 text-green-500 px-3 py-1 rounded-full border border-green-500/20">Sistemas Online</span>
-            <button onclick="location.reload()" class="text-gray-500 hover:text-white transition">🔄</button>
-        </div>
-    </header>
+    </div>
 
-    <main class="flex-1 flex overflow-hidden">
-        
-        <aside class="w-80 border-r border-gray-800 flex flex-col bg-[#0d1117]">
-            <div class="p-4 border-b border-gray-800">
-                <h2 class="text-sm font-semibold uppercase tracking-widest text-gray-500">Solicitudes Entrantes</h2>
-            </div>
-            <div id="queue-list" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
-                <p class="text-center text-gray-600 text-sm mt-10">No hay tickets pendientes...</p>
-            </div>
-        </aside>
-
-        <section class="flex-1 flex flex-col bg-[#0d1117]">
-            <div id="chat-header" class="p-4 border-b border-gray-800 flex justify-between items-center hidden">
+    <div class="main">
+        <div id="tab-setup">
+            <h1>Setup del Ticket</h1>
+            <div class="grid-setup">
                 <div>
-                    <h3 id="current-user" class="font-bold">Chat con Usuario</h3>
-                    <p class="text-xs text-gray-500 italic">Conversación encriptada y corregida</p>
+                    <label>Título del Ticket</label>
+                    <input type="text" id="t-title" placeholder="Ej: Soporte Técnico" oninput="updatePreview()">
+                    
+                    <label style="display:block; margin-top:15px;">Mensaje de Bienvenida</label>
+                    <input type="text" id="t-desc" placeholder="Ej: Hola! En breve te atenderemos..." oninput="updatePreview()">
+                    
+                    <label style="display:block; margin-top:15px;">Color de Marca</label>
+                    <input type="color" id="t-color" value="#6366f1" oninput="updatePreview()">
+                    
+                    <button class="btn-save" onclick="saveSetup()">GUARDAR CONFIGURACIÓN</button>
                 </div>
-                <button class="text-red-400 text-sm hover:underline">Finalizar Ticket</button>
-            </div>
-
-            <div id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
-                <div class="h-full flex flex-col items-center justify-center text-gray-600">
-                    <svg class="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path></svg>
-                    <p>Selecciona un ticket para empezar a responder</p>
-                </div>
-            </div>
-
-            <div class="p-4 bg-[#161b22] border-t border-gray-800">
-                <div class="max-w-4xl mx-auto relative">
-                    <input type="text" id="msg-input" placeholder="Escribe tu respuesta aquí..." 
-                        class="w-full bg-[#0d1117] border border-gray-700 rounded-xl py-4 px-6 pr-16 focus:outline-none focus:border-indigo-500 transition shadow-2xl">
-                    <button onclick="sendMsg()" class="absolute right-3 top-2.5 bg-indigo-600 p-2 rounded-lg hover:bg-indigo-500 transition">
-                        <svg class="w-6 h-6 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <aside id="admin-panel" class="w-64 border-l border-gray-800 bg-[#161b22] hidden p-4">
-            <h2 class="font-bold mb-4 text-indigo-400">Panel de Control</h2>
-            <div class="space-y-4 text-sm">
-                <div class="bg-black/20 p-3 rounded">
-                    <p class="text-gray-500">Supports Online</p>
-                    <p id="sup-count" class="text-xl font-bold">1</p>
-                </div>
-                <button onclick="toggleSetup()" class="w-full bg-gray-800 p-2 rounded hover:bg-gray-700 transition">Configurar Bot</button>
-            </div>
-        </aside>
-    </main>
-
-    <script>
-        const socket = io();
-        const myId = prompt("Tu Discord ID:");
-        let activeUserId = null;
-
-        socket.emit('auth', myId);
-
-        // Si soy yo, mostrar panel admin
-        if(myId === "TU_CLIENT_ID_AQUI") document.getElementById('admin-panel').classList.remove('hidden');
-
-        // Escuchar nuevos tickets
-        socket.on('new_request', (ticket) => {
-            const list = document.getElementById('queue-list');
-            const div = document.createElement('div');
-            div.className = "p-4 bg-[#1c2128] border border-gray-700 rounded-xl cursor-pointer hover:border-indigo-500 transition";
-            div.innerHTML = `
-                <div class="flex justify-between text-xs text-gray-500 mb-1"><span>#Ticket</span><span>${ticket.time}</span></div>
-                <p class="font-bold text-white">${ticket.username}</p>
-                <p class="text-xs text-gray-400 truncate mt-1">${ticket.firstMsg}</p>
-                <button onclick="accept('${ticket.userId}')" class="mt-3 w-full bg-indigo-600/20 text-indigo-400 py-1 rounded text-xs font-bold hover:bg-indigo-600 hover:text-white transition">ACEPTAR SOLICITUD</button>
-            `;
-            list.prepend(div);
-        });
-
-        function accept(uid) {
-            socket.emit('accept_ticket', uid);
-        }
-
-        socket.on('ticket_assigned', (ticket) => {
-            activeUserId = ticket.userId;
-            document.getElementById('chat-header').classList.remove('hidden');
-            document.getElementById('current-user').innerText = ticket.username;
-            document.getElementById('chat-box').innerHTML = ''; // Limpiar
-        });
-
-        socket.on('receive_msg', (msg) => {
-            const box = document.getElementById('chat-box');
-            const isClient = msg.role === 'client';
-            box.innerHTML += `
-                <div class="flex ${isClient ? 'justify-start' : 'justify-end'}">
-                    <div class="${isClient ? 'chat-bubble-client' : 'chat-bubble-support'} max-w-[70%] p-3 rounded-xl shadow-lg">
-                        <p class="text-sm">${msg.text}</p>
-                        <span class="text-[10px] opacity-50 mt-1 block">${msg.time}</span>
+                
+                <div>
+                    <label>Live Preview (PC/Mobile)</label>
+                    <div class="discord-preview" id="p-box">
+                        <strong id="p-title">Soporte Koda</strong>
+                        <p id="p-desc" style="color:#dbdee1; font-size:0.9rem">Haz clic abajo para abrir un ticket</p>
+                        <button class="discord-btn">📩 Abrir Ticket</button>
                     </div>
                 </div>
-            `;
-            box.scrollTop = box.scrollHeight;
-        });
+            </div>
+        </div>
 
-        function sendMsg() {
-            const input = document.getElementById('msg-input');
-            if(!input.value || !activeUserId) return;
-            socket.emit('send_to_client', { text: input.value, userId: activeUserId });
-            input.value = '';
+        <div id="tab-admin" style="display:none;">
+            <h1>👑 Panel del Dueño</h1>
+            <div class="admin-section">
+                <h3>Gestionar Equipo de Soporte</h3>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="support-id" placeholder="ID de Discord del Support">
+                    <button class="btn-save" style="width:150px; margin:8px 0 0 0" onclick="manageSupport('add')">Agregar</button>
+                </div>
+                <div id="support-list" style="margin-top:20px;">
+                    </div>
+            </div>
+        </div>
+
+        <div id="tab-tickets" style="display:none;">
+            <h1>📩 Pool de Tickets</h1>
+            <p>Los nuevos tickets aparecerán aquí. El primero en aceptar toma la conversación.</p>
+            <div id="ticket-pool">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const OWNER_ID = "967660960682762251";
+        let myId = prompt("Ingresa tu ID de Discord para testear:"); // En real se usa OAuth2
+
+        function init() {
+            if(myId === OWNER_ID) {
+                document.getElementById('admin-menu').style.display = 'block';
+            }
+            updatePreview();
         }
+
+        function updatePreview() {
+            const title = document.getElementById('t-title').value || "Soporte Koda";
+            const desc = document.getElementById('t-desc').value || "Haz clic abajo para abrir un ticket";
+            const color = document.getElementById('t-color').value;
+            
+            document.getElementById('p-title').innerText = title;
+            document.getElementById('p-desc').innerText = desc;
+            document.getElementById('p-box').style.borderColor = color;
+        }
+
+        function showTab(name) {
+            ['setup', 'admin', 'tickets'].forEach(t => document.getElementById('tab-'+t).style.display = 'none');
+            document.getElementById('tab-'+name).style.display = 'block';
+        }
+
+        async function saveSetup() {
+            alert("✅ Configuración enviada al Bot");
+            // Aquí iría el fetch al backend
+        }
+
+        async function manageSupport(action) {
+            const id = document.getElementById('support-id').value;
+            if(!id) return;
+            alert(`${action === 'add' ? 'Agregado' : 'Eliminado'}: ${id}`);
+        }
+
+        init();
     </script>
 </body>
 </html>

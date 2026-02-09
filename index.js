@@ -1,118 +1,89 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+const cors = require('cors');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+app.use(cors());
+app.use(express.json());
 
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-// --- BASE DE DATOS EN MEMORIA (Elaborada) ---
-const OWNER_ID = 'TU_CLIENT_ID_AQUI';
-const db = {
-    config: { title: "Soporte Koda", color: "#5865F2", welcome: "Hola, ¿en qué ayudamos?" },
-    supports: new Set(['ID_DE_UN_AMIGO']), // Lista de IDs autorizados
-    queue: [], // Tickets esperando [{userId, channelId, firstMsg, time}]
-    activeTickets: {}, // { supportId: {userId, channelId, messages: []} }
-    allMessages: [] // Historial global para el Owner
-};
+// CONFIGURACIÓN MAESTRA
+const OWNER_ID = '967660960682762251'; 
+let supports = []; // IDs de Discord de tus ayudantes
+let tickets = []; // Base de datos viva de conversaciones
+let ticketConfig = { title: "Soporte Koda", color: "#6366f1", desc: "Haz clic abajo para abrir un ticket" };
 
-// --- MOTOR DE GRAMÁTICA PRO (Sin IA) ---
-function masterGrammar(text) {
-    let t = text.trim();
-    if (!t) return "";
-    
-    // Diccionario de corrección rápida
-    const rules = [
-        { reg: /\b(k|q|que)\b/gi, rep: "que" },
-        { reg: /\b(porke|pq|porque)\b/gi, rep: "porque" },
-        { reg: /\b(v|verda)\b/gi, rep: "verdad" },
-        { reg: /\b(tmb|tmbn)\b/gi, rep: "también" },
-        { reg: /\b(ola)\b/gi, rep: "Hola" },
-        { reg: /\bhacer\s+v\b/gi, rep: "hacer ver" }
-    ];
-    
-    rules.forEach(r => t = t.replace(r.reg, r.rep));
-    
-    // Capitalización inteligente
-    t = t.charAt(0).toUpperCase() + t.slice(1);
-    if (!/[.!?]$/.test(t)) t += ".";
-    
-    return t;
+// CORRECCIÓN SIN IA (Diccionario Pro)
+function correctGrammar(text) {
+    const rules = {
+        'ke': 'que', 'k': 'que', 'pq': 'porque', 'tmb': 'también', 'ola': 'Hola',
+        'aser': 'hacer', 'valla': 'vaya', 'haiga': 'haya', 'iba': 'iba', 'hiva': 'iba',
+        'estubimos': 'estuvimos', 'grax': 'gracias', 'nomas': 'no más'
+    };
+    return text.split(' ').map(w => rules[w.toLowerCase()] || w).join(' ');
 }
 
-// --- LÓGICA DE DISCORD ---
+// EVENTO: EL BOT RECIBE MENSAJES EN DISCORD
 client.on('messageCreate', async (msg) => {
     if (msg.author.bot) return;
-
-    // Lógica para abrir ticket (ejemplo: mensaje privado al bot)
-    if (!msg.guild) {
-        const existing = db.queue.find(q => q.userId === msg.author.id);
-        if (!existing) {
-            const ticket = { 
-                userId: msg.author.id, 
-                username: msg.author.username,
-                firstMsg: masterGrammar(msg.content),
-                time: new Date().toLocaleTimeString()
-            };
-            db.queue.push(ticket);
-            io.emit('new_request', ticket); // Notificar a todos los supports en la web
-            msg.reply("⏳ Tu solicitud ha sido enviada a nuestro equipo de soporte. Espera un momento...");
-        }
-    } else {
-        // Si el mensaje es en un canal de ticket ya activo
-        // Buscar quién tiene este canal asignado
-        for (const [supId, session] of Object.entries(db.activeTickets)) {
-            if (session.userId === msg.author.id) {
-                const cleanMsg = {
-                    role: 'client',
-                    user: msg.author.username,
-                    text: masterGrammar(msg.content),
-                    time: new Date().toLocaleTimeString()
-                };
-                session.messages.push(cleanMsg);
-                db.allMessages.push(cleanMsg);
-                io.to(supId).emit('receive_msg', cleanMsg); // Solo al support asignado
-                io.to('admins').emit('monitor_msg', cleanMsg); // Al dueño
-            }
-        }
+    
+    // Buscar si el mensaje pertenece a un ticket activo
+    const ticket = tickets.find(t => t.channelId === msg.channel.id);
+    if (ticket) {
+        ticket.messages.push({
+            role: 'client',
+            author: msg.author.username,
+            content: msg.content,
+            time: new Date().toLocaleTimeString()
+        });
     }
 });
 
-// --- COMUNICACIÓN WEB (SOCKETS) ---
-io.on('connection', (socket) => {
-    socket.on('auth', (userId) => {
-        socket.userId = userId;
-        if (userId === OWNER_ID) socket.join('admins');
-        console.log(`Usuario conectado: ${userId}`);
-    });
+// --- API PARA EL PANEL WEB ---
 
-    // Acción tipo DIDI: Aceptar Ticket
-    socket.on('accept_ticket', (userId) => {
-        const index = db.queue.findIndex(q => q.userId === userId);
-        if (index !== -1) {
-            const ticket = db.queue.splice(index, 1)[0];
-            db.activeTickets[socket.userId] = { ...ticket, messages: [] };
-            socket.emit('ticket_assigned', db.activeTickets[socket.userId]);
-            io.emit('update_queue', db.queue); // Quitar de la lista de otros supports
-        }
-    });
-
-    // Enviar mensaje del Support al Cliente
-    socket.on('send_to_client', async ({ text, userId }) => {
-        const user = await client.users.fetch(userId);
-        const cleanText = masterGrammar(text);
-        await user.send(`**[Soporte]:** ${cleanText}`);
-        
-        const msgObj = { role: 'support', text: cleanText, time: new Date().toLocaleTimeString() };
-        db.activeTickets[socket.userId].messages.push(msgObj);
-        socket.emit('receive_msg', msgObj);
-    });
+// Verificar quién es quién
+app.get('/api/auth/:id', (req, res) => {
+    const id = req.params.id;
+    let role = 'USER';
+    if (id === OWNER_ID) role = 'OWNER';
+    else if (supports.includes(id)) role = 'SUPPORT';
+    res.json({ role });
 });
 
-server.listen(3000, () => console.log('🚀 Koda Pro Backend en puerto 3000'));
-client.login('TU_TOKEN');
+// Agregar/Eliminar Supports (Solo para TI)
+app.post('/api/admin/supports', (req, res) => {
+    const { adminId, targetId, action } = req.body;
+    if (adminId !== OWNER_ID) return res.status(403).send("No autorizado");
+    
+    if (action === 'add') { if(!supports.includes(targetId)) supports.push(targetId); }
+    else supports = supports.filter(i => i !== targetId);
+    res.json({ success: true, supports });
+});
+
+// Enviar respuesta corregida desde la Web a Discord
+app.post('/api/reply', async (req, res) => {
+    const { ticketId, agentId, agentName, content } = req.body;
+    const ticket = tickets.find(t => t.id === ticketId);
+    
+    if (ticket && (agentId === OWNER_ID || supports.includes(agentId))) {
+        const corrected = correctGrammar(content);
+        const channel = await client.channels.fetch(ticket.channelId);
+        
+        await channel.send(`**[${agentName}]:** ${corrected}`);
+        ticket.messages.push({ role: 'support', author: agentName, content: corrected, time: new Date().toLocaleTimeString() });
+        res.json({ success: true, corrected });
+    }
+});
+
+// Guardar Configuración del Setup
+app.post('/api/setup', (req, res) => {
+    if (req.body.adminId !== OWNER_ID) return res.status(403).send("No");
+    ticketConfig = { ...req.body.config };
+    res.json({ success: true });
+});
+
+client.login(process.env.DISCORD_TOKEN);
+app.listen(3000, () => console.log("Koda Support Engine Ready"));
