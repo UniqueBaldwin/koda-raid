@@ -1,118 +1,118 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
 const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent 
-    ] 
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-const CLIENT_ID = '1469577414022795346'; 
-const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const REDIRECT_URI = 'https://koda-raid.onrender.com/auth/callback';
+// --- BASE DE DATOS EN MEMORIA (Elaborada) ---
+const OWNER_ID = 'TU_CLIENT_ID_AQUI';
+const db = {
+    config: { title: "Soporte Koda", color: "#5865F2", welcome: "Hola, ¿en qué ayudamos?" },
+    supports: new Set(['ID_DE_UN_AMIGO']), // Lista de IDs autorizados
+    queue: [], // Tickets esperando [{userId, channelId, firstMsg, time}]
+    activeTickets: {}, // { supportId: {userId, channelId, messages: []} }
+    allMessages: [] // Historial global para el Owner
+};
 
-let backups = {}; // Base de datos temporal para backups
+// --- MOTOR DE GRAMÁTICA PRO (Sin IA) ---
+function masterGrammar(text) {
+    let t = text.trim();
+    if (!t) return "";
+    
+    // Diccionario de corrección rápida
+    const rules = [
+        { reg: /\b(k|q|que)\b/gi, rep: "que" },
+        { reg: /\b(porke|pq|porque)\b/gi, rep: "porque" },
+        { reg: /\b(v|verda)\b/gi, rep: "verdad" },
+        { reg: /\b(tmb|tmbn)\b/gi, rep: "también" },
+        { reg: /\b(ola)\b/gi, rep: "Hola" },
+        { reg: /\bhacer\s+v\b/gi, rep: "hacer ver" }
+    ];
+    
+    rules.forEach(r => t = t.replace(r.reg, r.rep));
+    
+    // Capitalización inteligente
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    if (!/[.!?]$/.test(t)) t += ".";
+    
+    return t;
+}
 
-// OAuth2 Login
-app.get('/login', (req, res) => {
-    const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds`;
-    res.redirect(url);
-});
+// --- LÓGICA DE DISCORD ---
+client.on('messageCreate', async (msg) => {
+    if (msg.author.bot) return;
 
-app.get('/auth/callback', async (req, res) => {
-    const { code } = req.query;
-    try {
-        const response = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            grant_type: 'authorization_code',
-            code: code,
-            redirect_uri: REDIRECT_URI,
-        }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-        res.redirect(`https://koda-raid.vercel.app/?token=${response.data.access_token}`);
-    } catch (err) { res.status(500).send("Login Error"); }
-});
-
-// API Servers
-app.get('/api/servers', async (req, res) => {
-    const token = req.headers.authorization;
-    try {
-        const userGuilds = await axios.get('https://discord.com/api/users/@me/guilds', {
-            headers: { Authorization: token }
-        });
-        const botGuildIds = client.guilds.cache.map(g => g.id);
-        const mutual = userGuilds.data.filter(g => (parseInt(g.permissions) & 0x8) === 0x8 && botGuildIds.includes(g.id));
-        res.json(mutual);
-    } catch (e) { res.status(500).send("Error"); }
-});
-
-// PREMIUM: Crear Backup
-app.get('/backup', async (req, res) => {
-    const { guildId } = req.query;
-    const guild = client.guilds.cache.get(guildId);
-    if (!guild) return res.status(404).send("Bot not in server");
-
-    try {
-        const channels = await guild.channels.fetch();
-        backups[guildId] = channels.map(c => ({
-            name: c.name,
-            type: c.type,
-            parent: c.parentId ? channels.get(c.parentId).name : null
-        }));
-        res.send("Backup Success");
-    } catch (e) { res.status(500).send("Backup Fail"); }
-});
-
-// PREMIUM: Restaurar Backup
-app.get('/restore', async (req, res) => {
-    const { guildId } = req.query;
-    const backup = backups[guildId];
-    const guild = client.guilds.cache.get(guildId);
-    if (!backup || !guild) return res.status(404).send("No data");
-
-    try {
-        const current = await guild.channels.fetch();
-        for (const c of current.values()) await c.delete().catch(() => {});
-
-        for (const item of backup) {
-            await guild.channels.create({ name: item.name, type: item.type }).catch(() => {});
+    // Lógica para abrir ticket (ejemplo: mensaje privado al bot)
+    if (!msg.guild) {
+        const existing = db.queue.find(q => q.userId === msg.author.id);
+        if (!existing) {
+            const ticket = { 
+                userId: msg.author.id, 
+                username: msg.author.username,
+                firstMsg: masterGrammar(msg.content),
+                time: new Date().toLocaleTimeString()
+            };
+            db.queue.push(ticket);
+            io.emit('new_request', ticket); // Notificar a todos los supports en la web
+            msg.reply("⏳ Tu solicitud ha sido enviada a nuestro equipo de soporte. Espera un momento...");
         }
-        res.send("Restored");
-    } catch (e) { res.status(500).send("Restore Fail"); }
+    } else {
+        // Si el mensaje es en un canal de ticket ya activo
+        // Buscar quién tiene este canal asignado
+        for (const [supId, session] of Object.entries(db.activeTickets)) {
+            if (session.userId === msg.author.id) {
+                const cleanMsg = {
+                    role: 'client',
+                    user: msg.author.username,
+                    text: masterGrammar(msg.content),
+                    time: new Date().toLocaleTimeString()
+                };
+                session.messages.push(cleanMsg);
+                db.allMessages.push(cleanMsg);
+                io.to(supId).emit('receive_msg', cleanMsg); // Solo al support asignado
+                io.to('admins').emit('monitor_msg', cleanMsg); // Al dueño
+            }
+        }
+    }
 });
 
-// NUKE COMMAND
-app.get('/nuke', async (req, res) => {
-    const { guildId, name } = req.query;
-    const guild = client.guilds.cache.get(guildId);
-    if (!guild) return res.status(404).send("Bot not found");
+// --- COMUNICACIÓN WEB (SOCKETS) ---
+io.on('connection', (socket) => {
+    socket.on('auth', (userId) => {
+        socket.userId = userId;
+        if (userId === OWNER_ID) socket.join('admins');
+        console.log(`Usuario conectado: ${userId}`);
+    });
 
-    try {
-        const channels = await guild.channels.fetch();
-        for (const c of channels.values()) await c.delete().catch(() => {});
+    // Acción tipo DIDI: Aceptar Ticket
+    socket.on('accept_ticket', (userId) => {
+        const index = db.queue.findIndex(q => q.userId === userId);
+        if (index !== -1) {
+            const ticket = db.queue.splice(index, 1)[0];
+            db.activeTickets[socket.userId] = { ...ticket, messages: [] };
+            socket.emit('ticket_assigned', db.activeTickets[socket.userId]);
+            io.emit('update_queue', db.queue); // Quitar de la lista de otros supports
+        }
+    });
+
+    // Enviar mensaje del Support al Cliente
+    socket.on('send_to_client', async ({ text, userId }) => {
+        const user = await client.users.fetch(userId);
+        const cleanText = masterGrammar(text);
+        await user.send(`**[Soporte]:** ${cleanText}`);
         
-        for (let i = 0; i < 25; i++) {
-            setTimeout(() => {
-                guild.channels.create({ name: name || 'koda-raid', type: 0 })
-                    .then(ch => {
-                        ch.send({
-                            content: "@everyone **RAIDED BY KODA** ☠️\nhttps://koda-raid.vercel.app",
-                            files: ["https://koda-raid.vercel.app/banner.png"]
-                        }).catch(() => {});
-                    }).catch(() => {});
-            }, i * 400);
-        }
-        res.send("Nuked");
-    } catch (e) { res.status(500).send("Fail"); }
+        const msgObj = { role: 'support', text: cleanText, time: new Date().toLocaleTimeString() };
+        db.activeTickets[socket.userId].messages.push(msgObj);
+        socket.emit('receive_msg', msgObj);
+    });
 });
 
-client.login(process.env.DISCORD_TOKEN);
-app.listen(process.env.PORT || 3000, () => console.log('Koda 2.0 Online'));
+server.listen(3000, () => console.log('🚀 Koda Pro Backend en puerto 3000'));
+client.login('TU_TOKEN');
