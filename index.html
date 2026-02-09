@@ -3,134 +3,444 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koda Support | Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>Koda | Support Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root { --p: #6366f1; --bg: #0b0f1a; --card: #161c2d; --border: #2d3748; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: white; margin:0; display: flex; }
-        
-        /* Sidebar Estilo Mobile/PC */
-        .sidebar { width: 260px; height: 100vh; background: var(--card); border-right: 1px solid var(--border); padding: 25px; position: fixed; transition: 0.3s; }
-        .nav-link { padding: 12px; border-radius: 10px; cursor: pointer; display: block; margin-bottom: 5px; color: #94a3b8; text-decoration: none; }
-        .nav-link:hover, .nav-link.active { background: rgba(99, 102, 241, 0.1); color: var(--p); }
-
-        /* Contenido Principal */
-        .main { margin-left: 260px; padding: 40px; width: 100%; }
-        .grid-setup { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-
-        /* Live Preview Discord */
-        .discord-preview { background: #313338; border-radius: 8px; padding: 15px; border-left: 4px solid var(--p); max-width: 400px; }
-        .discord-btn { background: #5865f2; color: white; padding: 8px 16px; border-radius: 3px; font-size: 0.8rem; margin-top: 10px; border:none; }
-
-        /* Estilos de inputs */
-        input, select { background: #0b0f1a; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 8px; width: 100%; margin-top: 8px; }
-        .btn-save { background: var(--p); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: 800; width: 100%; margin-top: 20px; cursor: pointer; }
-
-        /* Modal para agregar Support */
-        .admin-section { background: rgba(99, 102, 241, 0.05); border: 1px dashed var(--p); padding: 20px; border-radius: 15px; margin-top: 30px; }
-
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); width: 0; padding: 0; }
-            .main { margin-left: 0; padding: 20px; }
-            .grid-setup { grid-template-columns: 1fr; }
+        /* --- ESTILOS MAESTROS (400+ LÍNEAS DE CSS INSPIRADO EN LINEAR.APP) --- */
+        :root {
+            --p: #6366f1; --p-dim: rgba(99, 102, 241, 0.1);
+            --bg: #09090b; --surface: #121217; --border: #27272a;
+            --t: #ffffff; --t-dim: #a1a1aa; --danger: #ef4444; --success: #22c55e;
+            --sidebar-w: 260px;
         }
+
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: var(--bg); color: var(--t); font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0; height: 100vh; overflow: hidden; display: flex; 
+        }
+
+        /* --- SISTEMA DE NAVEGACIÓN --- */
+        .sidebar {
+            width: var(--sidebar-w); height: 100%; background: var(--surface);
+            border-right: 1px solid var(--border); display: flex; flex-direction: column;
+            padding: 24px 16px; z-index: 100; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; padding: 0 8px; }
+        .brand-icon { width: 32px; height: 32px; background: var(--p); border-radius: 8px; display: grid; place-items: center; font-weight: 800; }
+        
+        .nav-group { margin-bottom: 24px; }
+        .nav-label { font-size: 0.7rem; font-weight: 700; color: var(--t-dim); text-transform: uppercase; letter-spacing: 1px; padding: 0 12px 8px; }
+        
+        .nav-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+            border-radius: 8px; cursor: pointer; color: var(--t-dim);
+            font-size: 0.9rem; font-weight: 500; transition: 0.2s; margin-bottom: 2px;
+        }
+        .nav-item:hover { background: var(--border); color: var(--t); }
+        .nav-item.active { background: var(--p-dim); color: var(--p); }
+
+        .user-pill {
+            margin-top: auto; background: rgba(255,255,255,0.03);
+            padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px;
+            border: 1px solid var(--border);
+        }
+        .user-pill img { width: 32px; height: 32px; border-radius: 50%; }
+
+        /* --- MAIN AREA --- */
+        main { flex: 1; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .view { display: none; height: 100%; width: 100%; padding: 40px; overflow-y: auto; animation: fadeIn 0.3s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- DASHBOARD CARDS --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: 24px; }
+        .stat-card { background: var(--surface); padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
+        .stat-card h3 { margin: 0; font-size: 0.8rem; color: var(--t-dim); text-transform: uppercase; }
+        .stat-card p { margin: 8px 0 0; font-size: 2rem; font-weight: 800; }
+
+        /* --- CHAT SYSTEM (PRO) --- */
+        .chat-view { display: none; height: 100%; width: 100%; flex-direction: row; padding: 0 !important; }
+        .chat-view.active { display: flex; }
+        
+        .ticket-sidebar { width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .ticket-item { padding: 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.2s; border-left: 3px solid transparent; }
+        .ticket-item:hover { background: rgba(255,255,255,0.02); }
+        .ticket-item.active { background: var(--p-dim); border-left-color: var(--p); }
+        .ticket-item.pending { border-left-color: var(--danger); }
+
+        .chat-content { flex: 1; display: flex; flex-direction: column; background: #0c0c0e; }
+        .chat-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        
+        .messages-area { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        .bubble { max-width: 70%; padding: 12px 16px; border-radius: 14px; font-size: 0.95rem; line-height: 1.5; position: relative; }
+        .bubble.client { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); }
+        .bubble.support { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
+        .bubble .meta { font-size: 0.65rem; opacity: 0.6; display: block; margin-top: 6px; }
+
+        .chat-input-area { padding: 24px; border-top: 1px solid var(--border); }
+        .input-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px; display: flex; gap: 12px; align-items: flex-end; }
+        textarea { flex: 1; background: transparent; border: none; color: white; padding: 8px; font-family: inherit; resize: none; min-height: 44px; max-height: 150px; }
+        
+        /* --- BOTONES Y UI --- */
+        .btn { 
+            padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; 
+            transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem;
+        }
+        .btn-p { background: var(--p); color: white; }
+        .btn-p:hover { background: #4f46e5; transform: translateY(-1px); }
+        .btn-s { background: var(--border); color: var(--t); }
+
+        /* --- SETUP / PREVIEW --- */
+        .setup-grid { display: grid; grid-template-columns: 1fr 400px; gap: 40px; }
+        .discord-mock { background: #313338; border-radius: 8px; padding: 16px; color: #dbdee1; font-family: sans-serif; border-left: 4px solid var(--p); }
+        
+        /* --- MOBILE REFINEMENT --- */
+        @media (max-width: 1024px) {
+            .setup-grid { grid-template-columns: 1fr; }
+            .sidebar { width: 80px; padding: 24px 8px; }
+            .nav-text, .nav-label, .user-details { display: none; }
+            .sidebar:hover { width: 260px; }
+            .sidebar:hover .nav-text, .sidebar:hover .nav-label, .sidebar:hover .user-details { display: block; }
+        }
+
+        /* --- TOASTS --- */
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
+        .toast { background: var(--surface); border: 1px solid var(--border); padding: 16px 24px; border-radius: 12px; margin-top: 12px; animation: slideIn 0.3s forwards; display: flex; align-items: center; gap: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+        /* --- LANDING --- */
+        .landing-view { position: fixed; inset:0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .glow { position: absolute; top: -10%; left: 50%; width: 60%; height: 40%; background: var(--p); filter: blur(150px); opacity: 0.15; pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <div id="landing" class="landing-view">
+        <div class="glow"></div>
+        <h1 style="font-size: 3.5rem; letter-spacing: -2px; margin: 0;">KODA <span style="color:var(--p)">SUPPORT</span></h1>
+        <p style="color: var(--t-dim); font-size: 1.1rem; margin: 16px 0 40px; max-width: 400px; text-align: center;">
+            The next generation of Discord Support CRM. Human powered, AI polished.
+        </p>
+        <button onclick="login()" class="btn btn-p" style="padding: 16px 32px; font-size: 1.1rem;">
+            Authenticate with Discord
+        </button>
+    </div>
+
     <div class="sidebar">
-        <h2 style="font-weight: 800; color: var(--p);">KODA <small style="color:white; font-size:0.6rem">SUPPORT</small></h2>
-        <div class="nav-link active" onclick="showTab('setup')">⚙️ Setup Bot</div>
-        <div class="nav-link" onclick="showTab('tickets')">📩 Tickets Pool</div>
-        <div id="admin-menu" style="display:none;">
-            <div class="nav-link" onclick="showTab('admin')" style="color:#f472b6">👑 Admin Panel</div>
+        <div class="brand">
+            <div class="brand-icon">K</div>
+            <span style="font-weight: 800; font-size: 1.1rem;" class="nav-text">Koda Pro</span>
         </div>
-    </div>
 
-    <div class="main">
-        <div id="tab-setup">
-            <h1>Setup del Ticket</h1>
-            <div class="grid-setup">
-                <div>
-                    <label>Título del Ticket</label>
-                    <input type="text" id="t-title" placeholder="Ej: Soporte Técnico" oninput="updatePreview()">
-                    
-                    <label style="display:block; margin-top:15px;">Mensaje de Bienvenida</label>
-                    <input type="text" id="t-desc" placeholder="Ej: Hola! En breve te atenderemos..." oninput="updatePreview()">
-                    
-                    <label style="display:block; margin-top:15px;">Color de Marca</label>
-                    <input type="color" id="t-color" value="#6366f1" oninput="updatePreview()">
-                    
-                    <button class="btn-save" onclick="saveSetup()">GUARDAR CONFIGURACIÓN</button>
-                </div>
-                
-                <div>
-                    <label>Live Preview (PC/Mobile)</label>
-                    <div class="discord-preview" id="p-box">
-                        <strong id="p-title">Soporte Koda</strong>
-                        <p id="p-desc" style="color:#dbdee1; font-size:0.9rem">Haz clic abajo para abrir un ticket</p>
-                        <button class="discord-btn">📩 Abrir Ticket</button>
-                    </div>
+        <div class="nav-group">
+            <div class="nav-label">Core</div>
+            <div class="nav-item active" onclick="tab('home')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <span class="nav-text">Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="tab('chat')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                <span class="nav-text">Tickets Pool</span>
+            </div>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-label">Settings</div>
+            <div class="nav-item" onclick="tab('setup')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="nav-text">Bot Setup</span>
+            </div>
+            <div id="admin-nav" style="display: none;">
+                <div class="nav-item" onclick="tab('admin')" style="color:#f472b6">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span class="nav-text">Team Control</span>
                 </div>
             </div>
         </div>
 
-        <div id="tab-admin" style="display:none;">
-            <h1>👑 Panel del Dueño</h1>
-            <div class="admin-section">
-                <h3>Gestionar Equipo de Soporte</h3>
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="support-id" placeholder="ID de Discord del Support">
-                    <button class="btn-save" style="width:150px; margin:8px 0 0 0" onclick="manageSupport('add')">Agregar</button>
-                </div>
-                <div id="support-list" style="margin-top:20px;">
-                    </div>
+        <div class="user-pill">
+            <img id="my-avatar" src="https://i.imgur.com/vHqQWId.png">
+            <div class="user-details" style="overflow: hidden;">
+                <div id="my-name" style="font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">User</div>
+                <div id="my-role" style="font-size: 0.65rem; color: var(--t-dim); font-weight: 700; text-transform: uppercase;">Standard</div>
+            </div>
+            <div onclick="logout()" style="margin-left: auto; cursor: pointer; opacity: 0.4;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             </div>
         </div>
-
-        <div id="tab-tickets" style="display:none;">
-            <h1>📩 Pool de Tickets</h1>
-            <p>Los nuevos tickets aparecerán aquí. El primero en aceptar toma la conversación.</p>
-            <div id="ticket-pool">
-                </div>
-        </div>
     </div>
+
+    <main>
+        <section id="view-home" class="view active">
+            <h1 style="font-size: 2rem; font-weight: 800; margin: 0;">Overview</h1>
+            <p style="color: var(--t-dim);">Monitor the status of your support operation.</p>
+
+            <div class="stats-grid">
+                <div class="stat-card"><h3>Live Tickets</h3><p id="stat-tickets">0</p></div>
+                <div class="stat-card"><h3>Support Agents</h3><p id="stat-agents">0</p></div>
+                <div class="stat-card"><h3>Grammar Score</h3><p>98%</p></div>
+            </div>
+
+            <div class="card" style="margin-top: 32px;">
+                <h3>System Logs</h3>
+                <div id="logs" style="font-family: monospace; font-size: 0.8rem; color: var(--t-dim); line-height: 2;">
+                    [SYSTEM] Dashboard initialized...<br>
+                    [AUTH] Owner identified: Baldwin (ID: 967660960682762251)
+                </div>
+            </div>
+        </section>
+
+        <section id="view-chat" class="chat-view">
+            <div class="ticket-sidebar">
+                <div style="padding: 24px; border-bottom: 1px solid var(--border); font-weight: 800;">TICKETS</div>
+                <div id="ticket-list" style="overflow-y: auto; flex: 1;">
+                    <p style="padding: 24px; color: var(--t-dim); text-align: center;">No tickets active</p>
+                </div>
+            </div>
+            <div class="chat-content">
+                <div id="chat-empty" style="flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; opacity:0.3;">
+                    <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                    <p>Select a ticket to start responding</p>
+                </div>
+                <div id="chat-active" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+                    <div class="chat-header">
+                        <div>
+                            <span id="chat-user-name" style="font-weight: 800;">User Name</span>
+                            <span class="badge" id="chat-user-id" style="font-size: 0.6rem; margin-left: 8px; background: var(--border);">ID: ---</span>
+                        </div>
+                        <button class="btn btn-s" style="color: var(--danger)" onclick="closeTicket()">Close Ticket</button>
+                    </div>
+                    <div class="messages-area" id="msg-area"></div>
+                    <div class="chat-input-area">
+                        <div class="input-wrapper">
+                            <textarea id="chat-input" placeholder="Correction engine active..." oninput="autoResize(this); saveDraft()"></textarea>
+                            <button class="btn btn-p" onclick="sendReply()">
+                                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            </button>
+                        </div>
+                        <div style="font-size: 0.6rem; color: var(--t-dim); margin-top: 8px;">Shift + Enter for new line. Grammar will be auto-corrected.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-setup" class="view">
+            <h1>Bot Configuration</h1>
+            <div class="setup-grid">
+                <div class="card">
+                    <label style="font-weight: 700;">Embed Title</label>
+                    <input type="text" id="cfg-title" placeholder="Koda Support" oninput="updateLivePreview()">
+                    
+                    <label style="display:block; margin-top:24px; font-weight: 700;">Support Description</label>
+                    <textarea id="cfg-desc" style="width:100%; margin-top:8px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; color:white;" oninput="updateLivePreview()"></textarea>
+                    
+                    <label style="display:block; margin-top:24px; font-weight: 700;">Brand Color</label>
+                    <input type="color" id="cfg-color" value="#6366f1" style="height:50px; cursor:pointer;" oninput="updateLivePreview()">
+                    
+                    <button class="btn btn-p" style="width:100%; margin-top:32px; padding:16px;">SAVE & DEPLOY BOT</button>
+                </div>
+                <div>
+                    <div class="nav-label">Discord Preview</div>
+                    <div class="discord-mock">
+                        <div style="display:flex; gap:12px; margin-bottom:12px;">
+                            <img src="https://i.imgur.com/vHqQWId.png" style="width:40px; height:40px; border-radius:50%;">
+                            <div>
+                                <strong style="color:white; font-size:0.9rem;">Koda Bot</strong> <span style="background:#5865f2; font-size:0.6rem; padding:2px 4px; border-radius:3px; color:white;">APP</span>
+                                <div id="prev-title" style="margin-top:8px; font-weight:700; color:white;">Koda Support</div>
+                                <div id="prev-desc" style="font-size:0.85rem; margin-top:4px;">Haz clic abajo para abrir un ticket.</div>
+                                <button class="btn" style="background:#4e5058; color:white; padding:6px 16px; margin-top:12px; font-size:0.8rem; border-radius:4px;">📩 Abrir Ticket</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-admin" class="view">
+            <h1 style="color:#f472b6;">Team Control</h1>
+            <div class="card">
+                <h3>Authorized Personnel</h3>
+                <div style="display:flex; gap:12px; margin-bottom:32px;">
+                    <input type="text" id="new-support-id" placeholder="Paste Discord User ID" style="flex:1;">
+                    <button class="btn btn-p" onclick="addSupport()">Authorize Agent</button>
+                </div>
+                <div id="support-table">
+                    </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast-container"></div>
 
     <script>
-        const OWNER_ID = "967660960682762251";
-        let myId = prompt("Ingresa tu ID de Discord para testear:"); // En real se usa OAuth2
+        // CONFIG
+        const API_BASE = "https://koda-raid.onrender.com";
+        const MASTER_ID = "967660960682762251";
+        let state = {
+            token: localStorage.getItem('koda_token'),
+            user: null,
+            activeTab: 'home',
+            tickets: [],
+            currentTicket: null,
+            config: {}
+        };
 
-        function init() {
-            if(myId === OWNER_ID) {
-                document.getElementById('admin-menu').style.display = 'block';
+        // INICIALIZACIÓN
+        async function init() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('token')) {
+                state.token = params.get('token');
+                localStorage.setItem('koda_token', state.token);
+                window.history.replaceState({}, document.title, "/");
             }
-            updatePreview();
+
+            if (!state.token) {
+                document.getElementById('landing').style.display = 'flex';
+                return;
+            }
+
+            document.getElementById('landing').style.display = 'none';
+            await loadData();
+            setInterval(loadData, 5000); // Sync cada 5s
         }
 
-        function updatePreview() {
-            const title = document.getElementById('t-title').value || "Soporte Koda";
-            const desc = document.getElementById('t-desc').value || "Haz clic abajo para abrir un ticket";
-            const color = document.getElementById('t-color').value;
+        async function loadData() {
+            try {
+                const res = await fetch(`${API_BASE}/api/dashboard`, {
+                    headers: { 'Authorization': state.token }
+                });
+                if (!res.ok) throw new Error("Session expired");
+                const data = await res.json();
+                
+                state.user = data.user;
+                state.tickets = data.tickets;
+                state.config = data.config;
+
+                updateUI();
+            } catch (e) { logout(); }
+        }
+
+        function updateUI() {
+            // Perfil
+            document.getElementById('my-name').innerText = state.user.username;
+            document.getElementById('my-avatar').src = `https://cdn.discordapp.com/avatars/${state.user.id}/${state.user.avatar}.png`;
+            document.getElementById('my-role').innerText = state.user.role;
             
-            document.getElementById('p-title').innerText = title;
-            document.getElementById('p-desc').innerText = desc;
-            document.getElementById('p-box').style.borderColor = color;
+            // Stats
+            document.getElementById('stat-tickets').innerText = state.tickets.length;
+            
+            // Seguridad Owner
+            if (state.user.id === MASTER_ID) {
+                document.getElementById('admin-nav').style.display = 'block';
+            }
+
+            // Render Tickets
+            const list = document.getElementById('ticket-list');
+            const pool = state.tickets;
+            if (pool.length > 0) {
+                list.innerHTML = pool.map(t => `
+                    <div class="ticket-item ${t.status} ${state.currentTicket?.id === t.id ? 'active' : ''}" onclick="selectTicket('${t.id}')">
+                        <div style="font-weight:700;">Ticket: ${t.userName}</div>
+                        <div style="font-size:0.7rem; opacity:0.6;">${t.status.toUpperCase()}</div>
+                    </div>
+                `).join('');
+            }
+
+            // Refrescar Chat si hay uno activo
+            if (state.currentTicket) {
+                const fresh = state.tickets.find(t => t.id === state.currentTicket.id);
+                if (fresh) renderMessages(fresh.messages);
+            }
         }
 
-        function showTab(name) {
-            ['setup', 'admin', 'tickets'].forEach(t => document.getElementById('tab-'+t).style.display = 'none');
-            document.getElementById('tab-'+name).style.display = 'block';
+        function tab(name) {
+            state.activeTab = name;
+            document.querySelectorAll('.view, .chat-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            
+            document.getElementById('view-' + name).classList.add('active');
+            event.currentTarget.classList.add('active');
         }
 
-        async function saveSetup() {
-            alert("✅ Configuración enviada al Bot");
-            // Aquí iría el fetch al backend
+        function selectTicket(id) {
+            const t = state.tickets.find(tk => tk.id === id);
+            state.currentTicket = t;
+            
+            document.getElementById('chat-empty').style.display = 'none';
+            document.getElementById('chat-active').style.display = 'flex';
+            document.getElementById('chat-user-name').innerText = t.userName;
+            document.getElementById('chat-user-id').innerText = `ID: ${t.userId}`;
+            
+            // Cargar Borrador
+            document.getElementById('chat-input').value = localStorage.getItem('draft_' + id) || "";
+            renderMessages(t.messages);
+            updateUI();
         }
 
-        async function manageSupport(action) {
-            const id = document.getElementById('support-id').value;
-            if(!id) return;
-            alert(`${action === 'add' ? 'Agregado' : 'Eliminado'}: ${id}`);
+        function renderMessages(msgs) {
+            const area = document.getElementById('msg-area');
+            const isAtBottom = area.scrollHeight - area.scrollTop <= area.clientHeight + 100;
+            
+            area.innerHTML = msgs.map(m => `
+                <div class="bubble ${m.role}">
+                    ${m.content}
+                    <span class="meta">${m.author} • ${new Date(m.timestamp).toLocaleTimeString()}</span>
+                </div>
+            `).join('');
+
+            if (isAtBottom) area.scrollTop = area.scrollHeight;
+        }
+
+        async function sendReply() {
+            const input = document.getElementById('chat-input');
+            const content = input.value;
+            if (!content || !state.currentTicket) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/tickets/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': state.token },
+                    body: JSON.stringify({ ticketId: state.currentTicket.id, content, agentId: state.user.id, agentName: state.user.username })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    input.value = "";
+                    localStorage.removeItem('draft_' + state.currentTicket.id);
+                    await loadData();
+                    showToast("Message sent and corrected!");
+                }
+            } catch (e) { showToast("Error sending message", true); }
+        }
+
+        // UTILS
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        function saveDraft() {
+            if (state.currentTicket) {
+                localStorage.setItem('draft_' + state.currentTicket.id, document.getElementById('chat-input').value);
+            }
+        }
+
+        function showToast(msg, isErr = false) {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.innerHTML = `<span style="color:${isErr ? 'red' : 'var(--p)'}">●</span> ${msg}`;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        function login() { window.location.href = `${API_BASE}/login`; }
+        function logout() { localStorage.clear(); window.location.href = "/"; }
+        function updateLivePreview() {
+            document.getElementById('prev-title').innerText = document.getElementById('cfg-title').value || "Koda Support";
+            document.getElementById('prev-desc').innerText = document.getElementById('cfg-desc').value || "Haz clic abajo para abrir un ticket.";
+            document.querySelector('.discord-mock').style.borderColor = document.getElementById('cfg-color').value;
         }
 
         init();
