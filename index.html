@@ -2,274 +2,29 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Koda | Pro Support Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Koda | Advanced Support Dashboard</title>
     <style>
-        :root {
-            --bg: #09090b; --surface: #121217; --border: #27272a;
-            --p: #6366f1; --p-dim: rgba(99, 102, 241, 0.1);
-            --t: #fafafa; --t-dim: #a1a1aa;
-            --danger: #ef4444; --success: #22c55e;
-            --sidebar-w: 260px;
-        }
-
-        * { box-sizing: border-box; outline: none; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        body { 
-            background: var(--bg); color: var(--t); font-family: 'Plus Jakarta Sans', sans-serif;
-            margin: 0; display: flex; height: 100vh; overflow: hidden;
-        }
-
-        /* --- SIDEBAR --- */
-        .sidebar {
-            width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; padding: 24px; z-index: 100;
-        }
-        .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
-        .logo-box { width: 32px; height: 32px; background: var(--p); border-radius: 8px; display: grid; place-items: center; font-weight: 900; }
-        
-        .nav-link {
-            padding: 12px 16px; border-radius: 10px; cursor: pointer; color: var(--t-dim);
-            margin-bottom: 4px; display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 0.9rem;
-        }
-        .nav-link:hover { background: var(--border); color: var(--t); }
-        .nav-link.active { background: var(--p-dim); color: var(--p); border: 1px solid rgba(99, 102, 241, 0.2); }
-
-        .user-pill {
-            margin-top: auto; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 14px;
-            display: flex; align-items: center; gap: 12px; border: 1px solid var(--border);
-        }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; background: #222; }
-
-        /* --- MAIN VIEW --- */
-        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .content-view { display: none; height: 100%; padding: 40px; overflow-y: auto; animation: slideUp 0.3s ease; }
-        .content-view.active { display: block; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* --- TICKETS INTERFACE --- */
-        .ticket-grid { display: grid; grid-template-columns: 320px 1fr; height: 100%; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-        .ticket-list { background: rgba(0,0,0,0.2); border-right: 1px solid var(--border); overflow-y: auto; }
-        .ticket-item { padding: 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
-        .ticket-item:hover { background: var(--border); }
-        .ticket-item.active { background: var(--p-soft); border-left: 4px solid var(--p); }
-
-        .chat-area { display: flex; flex-direction: column; background: var(--surface); }
-        .chat-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .messages { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .bubble { max-width: 70%; padding: 12px 16px; border-radius: 14px; font-size: 0.95rem; line-height: 1.5; }
-        .bubble.support { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
-        .bubble.client { align-self: flex-start; background: var(--border); border-bottom-left-radius: 4px; }
-
-        .chat-input { padding: 20px; border-top: 1px solid var(--border); display: flex; gap: 12px; }
-        textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: white; padding: 12px; resize: none; font-family: inherit; }
-        
-        /* --- DASHBOARD WIDGETS --- */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .card { background: var(--surface); border: 1px solid var(--border); padding: 24px; border-radius: 20px; }
-        .stat-val { font-size: 2.5rem; font-weight: 800; margin-top: 8px; }
-
-        /* --- BOTONES & UI --- */
-        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; }
-        .btn-p { background: var(--p); color: white; }
-        .btn-p:hover { background: #4f46e5; transform: translateY(-2px); }
-
-        #login-overlay {
-            position: fixed; inset: 0; background: var(--bg); z-index: 1000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .sidebar { width: 80px; padding: 15px; }
-            .nav-text, .user-details { display: none; }
-            .content-view { padding: 20px; }
-        }
+        :root { --p: #7c3aed; --bg: #09090b; --card: #18181b; --t: #ffffff; }
+        body { background: var(--bg); color: var(--t); font-family: sans-serif; margin: 0; display: flex; }
+        .sidebar { width: 250px; background: var(--card); height: 100vh; padding: 20px; border-right: 1px solid #27272a; }
+        .main { flex: 1; padding: 40px; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #27272a; }
+        .btn { background: var(--p); color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; }
     </style>
 </head>
 <body>
-
-    <div id="login-overlay">
-        <h1 style="font-size: 3rem; font-weight: 900; letter-spacing: -2px; margin-bottom: 10px;">KODA<span style="color:var(--p)">.</span></h1>
-        <p style="color: var(--t-dim); margin-bottom: 40px;">Professional Support Infrastructure</p>
-        <button class="btn btn-p" onclick="window.location.href='/login'" style="padding: 16px 32px; font-size: 1.1rem;">
-            AUTHENTICATE WITH DISCORD
-        </button>
+    <div class="sidebar">
+        <h2>Koda CRM</h2>
+        <p>Dashboard</p>
+        <p>Tickets</p>
+        <p>Ajustes</p>
     </div>
-
-    <nav class="sidebar">
-        <div class="logo-area">
-            <div class="logo-box">K</div>
-            <span style="font-weight: 800; font-size: 1.1rem;" class="nav-text">Koda Pro</span>
+    <div class="main">
+        <h1>Bienvenido al Panel de Control</h1>
+        <div class="card" id="status-card">
+            <p>Estado del Bot: 🟢 Online</p>
+            <a href="/login" class="btn">Vincular con Discord</a>
         </div>
-
-        <div class="nav-link active" onclick="tab('home', this)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            <span class="nav-text">Dashboard</span>
-        </div>
-        <div class="nav-link" onclick="tab('tickets', this)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-            <span class="nav-text">Tickets Pool</span>
-        </div>
-        <div class="nav-link" onclick="tab('setup', this)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span class="nav-text">Configuration</span>
-        </div>
-
-        <div id="owner-badge" style="display:none; margin-top: 20px; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 10px; font-size: 0.7rem; font-weight: 800; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
-            OWNER MODE ACTIVE
-        </div>
-
-        <div class="user-pill">
-            <img id="u-avatar" src="" class="avatar">
-            <div class="user-details">
-                <div id="u-name" style="font-weight: 700; font-size: 0.85rem;">User</div>
-                <div id="u-role" style="font-size: 0.65rem; color: var(--t-dim);">Standard</div>
-            </div>
-            <div onclick="logout()" style="margin-left: auto; cursor: pointer; opacity: 0.5;">🚪</div>
-        </div>
-    </nav>
-
-    <main>
-        <section id="view-home" class="content-view active">
-            <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1.5px; margin: 0;">Overview</h1>
-            <p style="color: var(--t-dim); margin-bottom: 40px;">Sincronización en tiempo real con Discord.</p>
-
-            <div class="stats-grid">
-                <div class="card">
-                    <span style="color: var(--t-dim); font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Active Tickets</span>
-                    <div id="stat-tickets" class="stat-val">0</div>
-                </div>
-                <div class="card">
-                    <span style="color: var(--t-dim); font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Team Members</span>
-                    <div id="stat-agents" class="stat-val">0</div>
-                </div>
-                <div class="card">
-                    <span style="color: var(--t-dim); font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">System Logs</span>
-                    <div id="stat-logs" class="stat-val">0</div>
-                </div>
-            </div>
-
-            <div class="card" style="margin-top: 20px;">
-                <h3 style="margin-top: 0;">Recent Logs</h3>
-                <div id="log-container" style="display: flex; flex-direction: column; gap: 8px; font-family: monospace; font-size: 0.85rem; color: var(--t-dim);">
-                    </div>
-            </div>
-        </section>
-
-        <section id="view-tickets" class="content-view" style="padding: 20px;">
-            <div class="ticket-grid">
-                <div class="ticket-list" id="t-list">
-                    </div>
-                <div class="chat-area">
-                    <div id="chat-empty" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0.2;">
-                        <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-                        <p>Selecciona un ticket para responder</p>
-                    </div>
-                    <div id="chat-active" style="display:none; flex:1; flex-direction:column;">
-                        <div class="chat-header">
-                            <span id="chat-target-user" style="font-weight: 700;">---</span>
-                            <div class="btn btn-p" style="font-size: 0.7rem; padding: 4px 12px; background: var(--danger);">Close Ticket</div>
-                        </div>
-                        <div class="messages" id="msg-area"></div>
-                        <div class="chat-input">
-                            <textarea id="reply-box" placeholder="Escribe tu respuesta... Koda la corregirá." rows="2"></textarea>
-                            <button class="btn btn-p" onclick="sendReply()">SEND</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="view-setup" class="content-view">
-            <h1 style="font-size: 2rem; font-weight: 800;">Bot Setup</h1>
-            <div style="max-width: 600px; margin-top: 32px;" class="card">
-                <label style="display:block; margin-bottom:8px; font-weight:700;">Embed Title</label>
-                <input type="text" id="cfg-title" style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--border); color:white; border-radius:10px; margin-bottom:24px;">
-                
-                <label style="display:block; margin-bottom:8px; font-weight:700;">Main Description</label>
-                <textarea id="cfg-desc" style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--border); color:white; border-radius:10px; height:100px; margin-bottom:24px;"></textarea>
-                
-                <button class="btn btn-p" onclick="updateConfig()" style="width:100%; justify-content:center;">APPLY CHANGES</button>
-            </div>
-        </section>
-    </main>
-
-    <script>
-        let state = {
-            token: null,
-            user: null,
-            currentTicketId: null,
-            data: null
-        };
-
-        // INICIALIZACIÓN
-        async function start() {
-            const urlParams = new URLSearchParams(window.location.search);
-            state.token = urlParams.get('token') || localStorage.getItem('koda_token');
-
-            if (state.token) {
-                document.getElementById('login-overlay').style.display = 'none';
-                localStorage.setItem('koda_token', state.token);
-                window.history.replaceState({}, document.title, "/"); // Limpia la URL
-                await refreshData();
-                setInterval(refreshData, 5000); // Polling cada 5s
-            }
-        }
-
-        async function refreshData() {
-            try {
-                const res = await fetch('/api/me', {
-                    headers: { 'Authorization': state.token }
-                });
-                if (!res.ok) throw "Session Expired";
-                state.data = await res.json();
-                renderUI();
-            } catch (e) {
-                logout();
-            }
-        }
-
-        function renderUI() {
-            const d = state.data;
-            document.getElementById('u-name').innerText = d.user.username;
-            document.getElementById('u-role').innerText = d.user.role;
-            document.getElementById('u-avatar').src = `https://cdn.discordapp.com/avatars/${d.user.id}/${d.user.avatar}.png`;
-            
-            if (d.user.role === 'OWNER') document.getElementById('owner-badge').style.display = 'block';
-
-            document.getElementById('stat-tickets').innerText = d.stats.tickets;
-            document.getElementById('stat-agents').innerText = d.stats.agents;
-            document.getElementById('stat-logs').innerText = d.stats.logs;
-
-            // Logs
-            // document.getElementById('log-container').innerHTML = ... (lógica de logs)
-        }
-
-        function tab(name, el) {
-            document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.getElementById('view-' + name).classList.add('active');
-            el.classList.add('active');
-        }
-
-        function logout() {
-            localStorage.removeItem('koda_token');
-            window.location.reload();
-        }
-
-        async function updateConfig() {
-            const title = document.getElementById('cfg-title').value;
-            const description = document.getElementById('cfg-desc').value;
-            await fetch('/api/admin/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': state.token },
-                body: JSON.stringify({ title, description })
-            });
-            alert("Sincronizado con Koda Server.");
-        }
-
-        start();
-    </script>
+    </div>
 </body>
 </html>
