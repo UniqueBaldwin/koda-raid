@@ -3,267 +3,376 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KODA RAID | Dashboard Pro</title>
+    <title>KODA RAID | Panel de Control</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
-            --bg: #050505;
-            --side: #0a0a0a;
-            --primary: #6366f1;
-            --accent: #22c55e;
-            --danger: #ef4444;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.08);
+            --bg: #09090b; --side: #000000; --primary: #6366f1; --accent: #8b5cf6;
+            --danger: #ef4444; --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff; --text-muted: #a1a1aa;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; }
+        body { background: var(--bg); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: var(--side); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s; z-index: 100; }
+        .sidebar.closed { width: 80px; }
+        .logo-area { padding: 25px; font-size: 1.2rem; font-weight: 700; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .logo-img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary); }
+        .sidebar.closed .logo-text { display: none; }
         
-        body { background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; }
-
-        /* --- LOADER --- */
-        #loader {
-            position: fixed; inset: 0; background: var(--bg); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: 0.5s;
-        }
-        .spinner {
-            width: 50px; height: 50px; border: 3px solid var(--glass);
-            border-top: 3px solid var(--primary); border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* --- SIDEBAR RESPONSIVE --- */
-        .sidebar {
-            width: 280px; background: var(--side); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; transition: 0.3s; z-index: 1000;
-        }
-        
-        @media (max-width: 900px) {
-            .sidebar { position: fixed; left: -280px; height: 100%; }
-            .sidebar.active { left: 0; }
-        }
-
-        .logo-area { padding: 30px; font-size: 1.5rem; font-weight: 700; border-bottom: 1px solid var(--border); }
-        .logo-area span { color: var(--primary); }
-
         .nav-menu { padding: 20px; flex: 1; }
-        .nav-item {
-            padding: 15px; border-radius: 12px; margin-bottom: 8px; cursor: pointer;
-            display: flex; align-items: center; gap: 12px; color: #a1a1aa; transition: 0.2s;
-        }
-        .nav-item:hover, .nav-item.active { background: var(--glass); color: white; border: 1px solid var(--border); }
+        .nav-item { padding: 12px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: var(--text-muted); transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { background: var(--glass); color: #fff; border: 1px solid var(--border); }
         .nav-item.active { border-color: var(--primary); color: var(--primary); }
+        .sidebar.closed .nav-text { display: none; }
 
-        /* --- MAIN CONTENT --- */
-        .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: var(--bg); }
+        /* MAIN */
+        .main { flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at top right, #1a1a2e, var(--bg)); }
+        .top-bar { padding: 15px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
+        .user-pill { background: var(--glass); padding: 5px 15px; border-radius: 50px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); }
         
-        .top-bar {
-            padding: 20px 40px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--border); background: rgba(5,5,5,0.5); backdrop-filter: blur(10px);
-        }
+        /* SECCIONES */
+        .view-section { display: none; padding: 30px; height: 100%; overflow-y: auto; }
+        .view-section.active { display: block; animation: fade 0.3s; }
+        @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
 
-        .user-profile { display: flex; align-items: center; gap: 15px; background: var(--glass); padding: 8px 15px; border-radius: 50px; border: 1px solid var(--border); }
-        .avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--primary); }
-        .role-badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
-        .role-owner { background: var(--danger); }
-        .role-staff { background: var(--primary); }
-        .role-user { background: #555; }
+        /* COMPONENTES */
+        .card { background: #121212; border: 1px solid var(--border); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; background: var(--primary); color: white; transition: 0.2s; }
+        .btn:hover { filter: brightness(1.2); }
+        input, select, textarea { width: 100%; background: #000; border: 1px solid var(--border); padding: 10px; border-radius: 8px; color: white; margin-bottom: 10px; }
+        
+        /* CHAT SYSTEM */
+        .chat-layout { display: flex; height: calc(100vh - 150px); gap: 20px; }
+        .ticket-list { width: 300px; background: #000; border-radius: 15px; border: 1px solid var(--border); overflow-y: auto; }
+        .ticket-item { padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
+        .ticket-item:hover { background: var(--glass); }
+        .ticket-item.active { background: rgba(99, 102, 241, 0.1); border-left: 3px solid var(--primary); }
+        .badge-new { position: absolute; top: 10px; right: 10px; background: var(--danger); width: 10px; height: 10px; border-radius: 50%; }
 
-        .content-view { padding: 40px; display: none; max-width: 1000px; margin: 0 auto; width: 100%; }
-        .content-view.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-window { flex: 1; background: #000; border-radius: 15px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 70%; padding: 10px 15px; border-radius: 10px; font-size: 0.9rem; }
+        .msg-user { align-self: flex-start; background: #222; border: 1px solid var(--border); }
+        .msg-staff { align-self: flex-end; background: var(--primary); color: white; }
+        .chat-input-area { padding: 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
 
-        /* --- UI COMPONENTS --- */
-        .card { background: var(--glass); border: 1px solid var(--border); border-radius: 20px; padding: 25px; margin-top: 20px; }
-        .btn { padding: 12px 25px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
-        input { background: #111; border: 1px solid var(--border); padding: 12px; border-radius: 10px; color: white; width: 100%; margin-bottom: 15px; outline: none; }
-        input:focus { border-color: var(--primary); }
+        /* SETUP GRID */
+        .server-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .server-card { background: var(--glass); padding: 15px; border-radius: 10px; text-align: center; cursor: pointer; border: 1px solid transparent; }
+        .server-card:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.1); }
+        .server-icon { width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px; object-fit: cover; }
 
-        .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-        @media (max-width: 900px) { .mobile-toggle { display: block; } }
+        /* PREVIEW EMBED */
+        .embed-preview { background: #2f3136; padding: 10px; border-radius: 5px; border-left: 4px solid var(--primary); max-width: 400px; }
+        .discord-btn { background: #5865F2; color: white; padding: 8px 16px; border-radius: 3px; font-size: 14px; display: inline-block; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; color: var(--primary); font-weight: 500;" id="loader-text">Verificando Credenciales...</p>
-    </div>
-
     <nav class="sidebar" id="sidebar">
-        <div class="logo-area">KODA<span>RAID</span></div>
-        <div class="nav-menu">
-            <div class="nav-item active" onclick="switchView('home')" id="nav-home">🏠 Dashboard</div>
-            <div class="nav-item" onclick="switchView('setup')" id="nav-setup">⚙️ Setup</div>
-            <div class="nav-item" id="nav-admin" style="display: none;" onclick="switchView('admin')">🛡️ Admin Staff</div>
-            <div class="nav-item" onclick="switchView('help')">❓ Help / Invite</div>
+        <div class="logo-area">
+            <img src="https://cdn.discordapp.com/embed/avatars/0.png" class="logo-img" id="bot-avatar">
+            <span class="logo-text">KODA RAID</span>
         </div>
-        <div style="padding: 20px; border-top: 1px solid var(--border);">
-            <div class="nav-item" onclick="location.href='/'" style="color: var(--danger);">🚪 Logout</div>
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="nav('home')">🏠 <span class="nav-text">Dashboard</span></div>
+            <div class="nav-item" onclick="nav('setup')">⚙️ <span class="nav-text">Setup & Embeds</span></div>
+            <div class="nav-item" onclick="nav('chat')">💬 <span class="nav-text">Live Support</span></div>
+            <div class="nav-item" id="btn-admin" style="display:none;" onclick="nav('admin')">🛡️ <span class="nav-text">Admin Staff</span></div>
+        </div>
+        <div style="padding: 20px;">
+            <div class="nav-item" onclick="toggleSidebar()">⬅️ <span class="nav-text">Colapsar</span></div>
         </div>
     </nav>
 
     <main class="main">
         <div class="top-bar">
-            <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
-            <h2 id="view-title">Dashboard</h2>
-            <div class="user-profile">
-                <span id="badge" class="role-badge role-user">User</span>
-                <span id="username">Guest</span>
-                <img id="u-avatar" src="logo.png" class="avatar">
+            <h2 id="page-title">Dashboard</h2>
+            <div class="user-pill">
+                <span id="role-badge" style="font-size: 0.8rem; font-weight: bold; color: var(--accent);">USER</span>
+                <span id="username">Invitado</span>
+                <img id="user-avatar" src="" style="width: 25px; height: 25px; border-radius: 50%;">
             </div>
         </div>
 
-        <section id="home" class="content-view active">
-            <h1 id="txt-welcome">Bienvenido</h1>
-            <p style="color: #a1a1aa; margin-top: 10px;" id="txt-desc">Panel de gestión Koda Raid inicializado.</p>
+        <section id="home" class="view-section active">
+            <h1>Bienvenido al Centro de Comando</h1>
+            <p style="color: #666; margin-bottom: 20px;">Control total sobre tus comunidades.</p>
+            <div class="card">
+                <h3>Estado del Bot</h3>
+                <p>✅ Online - Sistema Operativo</p>
+            </div>
+        </section>
+
+        <section id="setup" class="view-section">
+            <h1>Configurar Ticket System</h1>
+            <p>Selecciona un servidor para instalar el panel de tickets.</p>
             
-            <div class="card">
-                <h3>Estado del Sistema</h3>
-                <div style="display: flex; gap: 20px; margin-top: 20px;">
-                    <div style="flex: 1; text-align: center; padding: 20px; background: rgba(34, 197, 94, 0.05); border-radius: 15px; border: 1px solid var(--accent);">
-                        <div style="color: var(--accent); font-size: 1.5rem; font-weight: 700;">Online</div>
-                        <div style="font-size: 0.8rem; color: #888;">Bot Status</div>
+            <div id="server-list" class="server-grid" style="margin-top: 20px;">
+                <p>Cargando servidores...</p>
+            </div>
+
+            <div id="config-panel" class="card" style="display:none; margin-top: 20px;">
+                <h3>Personalizar Embed <span id="selected-guild-name"></span></h3>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <label>Título del Embed</label>
+                        <input type="text" id="cfg-title" placeholder="Ej: Soporte Técnico" oninput="updatePreview()">
+                        
+                        <label>Descripción</label>
+                        <textarea id="cfg-desc" rows="3" placeholder="Explica para qué es el ticket..." oninput="updatePreview()"></textarea>
+                        
+                        <label>Color (Hex)</label>
+                        <input type="color" id="cfg-color" value="#6366f1" oninput="updatePreview()">
+                        
+                        <label>Texto del Botón</label>
+                        <input type="text" id="cfg-btn-text" placeholder="Abrir Ticket" value="Abrir Ticket" oninput="updatePreview()">
+
+                        <label>Emoji del Botón</label>
+                        <input type="text" id="cfg-emoji" placeholder="📩" value="📩">
+
+                        <label>ID del Canal donde enviar</label>
+                        <input type="text" id="cfg-channel-id" placeholder="Pegar ID del canal de Discord">
+
+                        <button class="btn" onclick="sendConfig()">🚀 Enviar Panel a Discord</button>
                     </div>
-                    <div style="flex: 1; text-align: center; padding: 20px; background: var(--glass); border-radius: 15px; border: 1px solid var(--border);">
-                        <div style="font-size: 1.5rem; font-weight: 700;">V 2.0</div>
-                        <div style="font-size: 0.8rem; color: #888;">Version</div>
+                    
+                    <div style="flex: 1;">
+                        <h4>Previsualización</h4>
+                        <div class="embed-preview" id="preview-box">
+                            <h4 id="prev-title" style="color: white; margin-bottom: 5px;">Soporte Técnico</h4>
+                            <p id="prev-desc" style="color: #dcddde; font-size: 0.9rem;">Explica para qué es el ticket...</p>
+                        </div>
+                        <div class="discord-btn" id="prev-btn">📩 Abrir Ticket</div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="setup" class="content-view">
-            <h1>Configuración del Bot</h1>
-            <div class="card">
-                <p>Para configurar el bot en tu servidor, sigue estos pasos:</p>
-                <ul style="margin: 20px; color: #a1a1aa; line-height: 1.8;">
-                    <li>Usa el comando <code>/setup</code> en cualquier canal.</li>
-                    <li>Sigue el menú interactivo para definir el canal de logs.</li>
-                    <li>Otorga los permisos necesarios de Administrador.</li>
-                </ul>
-                <button class="btn btn-primary" onclick="switchView('help')">Ver Comandos</button>
+        <section id="chat" class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h1>Centro de Tickets</h1>
+                <span style="font-size: 0.8rem; color: #666;">Corrección ortográfica: ACTIVA</span>
             </div>
-        </section>
-
-        <section id="admin" class="content-view">
-            <h1>🛡️ Gestión de Staff</h1>
-            <p style="color: var(--danger);">Panel exclusivo de Propietario</p>
             
-            <div class="card">
-                <h3>Agregar Nuevo Support</h3>
-                <p style="font-size: 0.8rem; color: #888; margin-bottom: 15px;">Ingresa el Client ID del usuario de Discord para darle acceso.</p>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="staff-id-input" placeholder="Ej: 1469577414022795346">
-                    <button class="btn btn-primary" onclick="addStaff()">Agregar</button>
-                </div>
-            </div>
+            <div class="chat-layout">
+                <div class="ticket-list" id="ticket-queue">
+                    </div>
 
-            <div class="card">
-                <h3>Lista de Staff Actual</h3>
-                <div id="staff-list" style="margin-top: 15px;">
-                    <p style="color: #555;">No hay staff registrado.</p>
+                <div class="chat-window">
+                    <div id="chat-header" style="padding: 15px; border-bottom: 1px solid var(--border); font-weight: bold;">
+                        Selecciona un ticket
+                    </div>
+                    <div class="chat-messages" id="chat-feed">
+                        </div>
+                    <div class="chat-input-area" id="input-area" style="display:none;">
+                        <input type="text" id="msg-input" placeholder="Escribe tu respuesta aquí...">
+                        <button class="btn" onclick="sendMessage()">Enviar</button>
+                    </div>
+                    <div id="claim-area" style="padding: 20px; text-align: center; display: none;">
+                        <button class="btn" onclick="claimTicket()">✋ Atender este Ticket</button>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <section id="help" class="content-view">
-            <h1>Help & Invite</h1>
+        <section id="admin" class="view-section">
+            <h1>Gestión de Staff</h1>
             <div class="card">
-                <h3>Slash Commands</h3>
-                <div style="margin-top: 15px;">
-                    <p><code>/setup</code> - Configura el bot en tu servidor.</p>
-                    <p><code>/invite</code> - Obtén el link para invitar a Koda.</p>
-                    <p><code>/help</code> - Lista detallada de funciones.</p>
-                </div>
+                <p>Solo tú (Owner) puedes ver esto.</p>
+                <input type="text" id="new-staff-id" placeholder="ID de Discord del nuevo Support">
+                <button class="btn" onclick="addStaff()">Añadir Support</button>
+                <div id="staff-list-visual" style="margin-top: 15px;"></div>
             </div>
-            <br>
-            <button class="btn btn-primary" style="width: 100%;" onclick="window.open('https://discord.com')">Invitar Bot a Servidor</button>
         </section>
+
     </main>
 
     <script>
+        const socket = io();
         const params = new URLSearchParams(window.location.search);
-        const ownerId = "1469577414022795346"; // Tu ID de Baldwin
-
-        // 1. DETECCIÓN DE IDIOMA
-        const lang = navigator.language || navigator.userLanguage;
-        const isEn = !lang.startsWith('es');
-        if(isEn) {
-            document.getElementById('txt-welcome').innerText = "Welcome";
-            document.getElementById('loader-text').innerText = "Verifying Credentials...";
-            document.getElementById('nav-home').innerText = "🏠 Dashboard";
-            // Agregar más traducciones aquí si quieres
-        }
-
-        // 2. CARGA DE DATOS DE USUARIO
-        window.onload = () => {
-            const user = params.get('user');
-            const avatar = params.get('avatar');
-            const role = params.get('role');
-            const userId = params.get('id');
-
-            if(user) {
-                document.getElementById('username').innerText = user;
-                document.getElementById('u-avatar').src = avatar;
-                document.getElementById('txt-welcome').innerText += `, ${user}`;
-                
-                const b = document.getElementById('badge');
-                b.innerText = role;
-                b.className = `role-badge role-${role}`;
-
-                // Si es OWNER, mostrar panel de Admin
-                if(role === 'owner') {
-                    document.getElementById('nav-admin').style.display = 'flex';
-                }
-            }
-
-            // Quitar Loader
-            setTimeout(() => {
-                document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
-            }, 1000);
+        
+        // DATOS DEL USUARIO
+        const USER = {
+            id: params.get('id'),
+            name: params.get('user'),
+            avatar: `https://cdn.discordapp.com/avatars/${params.get('id')}/${params.get('avatar').split('/').pop()}`,
+            role: params.get('role')
         };
 
-        // 3. NAVEGACIÓN
-        function switchView(id) {
-            document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(v => v.classList.remove('active'));
-            
+        // ESTADO GLOBAL
+        let currentTicketId = null;
+
+        // INICIALIZACIÓN
+        window.onload = () => {
+            if(!USER.id) {
+                // Si no hay user, redirigir a auth (pon tu link real aqui)
+                // window.location.href = '/api/login'; 
+                // alert("Por favor logueate");
+            } else {
+                document.getElementById('username').innerText = USER.name;
+                document.getElementById('user-avatar').src = USER.avatar;
+                document.getElementById('role-badge').innerText = USER.role.toUpperCase();
+                
+                if(USER.role === 'owner') {
+                    document.getElementById('btn-admin').style.display = 'flex';
+                }
+                loadGuilds();
+            }
+        };
+
+        // NAVEGACIÓN
+        function nav(id) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            document.getElementById('nav-' + (id === 'admin' ? 'admin' : id)).classList.add('active');
-            document.getElementById('view-title').innerText = id.charAt(0).toUpperCase() + id.slice(1);
-            
-            if(window.innerWidth < 900) toggleSidebar();
         }
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebar').classList.toggle('closed');
         }
 
-        // 4. FUNCIONES DE ADMIN (STAFF)
-        async function addStaff() {
-            const newId = document.getElementById('staff-id-input').value;
-            const currentUserId = params.get('id');
+        // --- LÓGICA DE SETUP ---
+        async function loadGuilds() {
+            const res = await fetch(`/api/guilds?userId=${USER.id}`);
+            const guilds = await res.json();
+            const container = document.getElementById('server-list');
+            container.innerHTML = guilds.map(g => `
+                <div class="server-card" onclick="openConfig('${g.id}', '${g.name}')">
+                    <img class="server-icon" src="${g.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}">
+                    <h4>${g.name}</h4>
+                </div>
+            `).join('');
+        }
 
-            if(!newId) return alert("Pon un ID válido");
+        let selectedGuildId = null;
+        function openConfig(guildId, name) {
+            selectedGuildId = guildId;
+            document.getElementById('config-panel').style.display = 'block';
+            document.getElementById('selected-guild-name').innerText = `- ${name}`;
+            window.scrollTo(0, document.body.scrollHeight);
+        }
 
-            const res = await fetch('/api/staff/add', {
+        function updatePreview() {
+            document.getElementById('prev-title').innerText = document.getElementById('cfg-title').value;
+            document.getElementById('prev-desc').innerText = document.getElementById('cfg-desc').value;
+            document.getElementById('preview-box').style.borderLeftColor = document.getElementById('cfg-color').value;
+            document.getElementById('prev-btn').innerText = (document.getElementById('cfg-emoji').value + " " + document.getElementById('cfg-btn-text').value);
+        }
+
+        async function sendConfig() {
+            const data = {
+                guildId: selectedGuildId,
+                channelId: document.getElementById('cfg-channel-id').value,
+                embedData: {
+                    title: document.getElementById('cfg-title').value,
+                    desc: document.getElementById('cfg-desc').value,
+                    color: document.getElementById('cfg-color').value,
+                    btnText: document.getElementById('cfg-btn-text').value,
+                    btnEmoji: document.getElementById('cfg-emoji').value
+                }
+            };
+            const res = await fetch('/api/setup/ticket', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ ownerId: currentUserId, newStaffId: newId })
+                body: JSON.stringify(data)
             });
-
-            if(res.ok) {
-                alert("✅ Staff agregado correctamente.");
-                location.reload(); // Recargar para ver cambios
-            } else {
-                alert("❌ Error: No tienes permisos o el ID es inválido.");
-            }
+            if(res.ok) alert("✅ Panel de Tickets enviado a Discord");
         }
+
+        // --- LÓGICA DE CHAT (SOCKETS) ---
+        
+        // 1. Recibir nuevo ticket
+        socket.on('newTicketIncoming', (data) => {
+            // Reproducir sonido si quieres
+            addTicketToQueue(data.id, data.user, data.guild, true);
+        });
+
+        function addTicketToQueue(id, user, guild, isNew) {
+            const list = document.getElementById('ticket-queue');
+            const item = document.createElement('div');
+            item.className = 'ticket-item';
+            item.innerHTML = `
+                <div style="font-weight:bold;">${user}</div>
+                <div style="font-size:0.8rem; color:#888;">${guild}</div>
+                ${isNew ? '<div class="badge-new"></div>' : ''}
+            `;
+            item.onclick = () => selectTicket(id, user, item);
+            list.prepend(item);
+        }
+
+        function selectTicket(id, user, element) {
+            currentTicketId = id;
+            document.querySelectorAll('.ticket-item').forEach(e => e.classList.remove('active'));
+            element.classList.add('active');
+            
+            // Limpiar badge
+            if(element.querySelector('.badge-new')) element.querySelector('.badge-new').remove();
+
+            document.getElementById('chat-header').innerText = `Ticket con: ${user}`;
+            document.getElementById('chat-feed').innerHTML = ''; // Limpiar chat anterior
+            
+            // Mostrar botón de aceptar o input si ya es mio
+            // (Simplificado: mostramos botón de atender por defecto)
+            document.getElementById('claim-area').style.display = 'block';
+            document.getElementById('input-area').style.display = 'none';
+        }
+
+        function claimTicket() {
+            socket.emit('claimTicket', { ticketId: currentTicketId, staffUser: USER.name });
+            document.getElementById('claim-area').style.display = 'none';
+            document.getElementById('input-area').style.display = 'flex';
+            
+            // Mensaje de sistema en el chat
+            addMessageToFeed("Has tomado este ticket. La autocorrección está activa.", "sys");
+        }
+
+        // 2. Enviar mensaje
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const txt = input.value;
+            if(!txt) return;
+
+            // Enviar al server
+            socket.emit('staffMessage', { ticketId: currentTicketId, content: txt, staffName: USER.name });
+            
+            // Mostrar localmente (con simulación de corrección visual)
+            addMessageToFeed(txt, 'staff'); // El server lo mandará corregido a Discord
+            input.value = '';
+        }
+
+        // 3. Recibir mensaje de Discord (Usuario)
+        socket.on('discordMessage', (data) => {
+            if(data.ticketId === currentTicketId) {
+                addMessageToFeed(data.content, 'user', data.author);
+            } else {
+                // Marcar el otro ticket como no leido (pendiente)
+            }
+        });
+
+        function addMessageToFeed(text, type, authorName) {
+            const feed = document.getElementById('chat-feed');
+            const div = document.createElement('div');
+            div.className = `msg msg-${type}`;
+            div.innerHTML = type === 'user' ? `<b>${authorName}:</b> ${text}` : text;
+            feed.appendChild(div);
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        // --- LÓGICA ADMIN ---
+        async function addStaff() {
+            const id = document.getElementById('new-staff-id').value;
+            await fetch('/api/staff/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ownerId: USER.id, newStaffId: id })
+            });
+            alert("Support añadido");
+        }
+
     </script>
 </body>
 </html>
