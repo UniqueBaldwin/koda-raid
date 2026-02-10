@@ -2,23 +2,26 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | KODA RAID</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <title>KODA RAID - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #050505; color: white; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; margin: 0;}
-        .login-card { text-align: center; padding: 40px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; width: 100%; max-width: 400px; }
-        .btn-discord { background: #5865F2; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; display: block; margin-top: 20px; transition: 0.3s; }
-        .btn-discord:hover { background: #4752c4; transform: translateY(-2px); }
-        h1 { font-size: 2rem; margin-bottom: 10px; }
-        span { color: #6366f1; }
+        body { background: #0b0b0e; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: #16161a; padding: 40px; border-radius: 15px; text-align: center; width: 350px; border: 1px solid #333; }
+        .logo { width: 100px; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #7289da; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #5b6eae; }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h1>KODA <span>RAID</span></h1>
-        <p style="color: #aaa;">Panel de Control & Soporte</p>
-        <a href="/login" class="btn-discord">Iniciar sesión con Discord</a>
+    <div class="login-box">
+        <img src="logo.png" alt="Logo" class="logo">
+        <h2>KODA RAID</h2>
+        <form action="/login" method="POST">
+            <input type="text" name="username" placeholder="Usuario" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit">ACCEDER</button>
+        </form>
     </div>
 </body>
 </html>
