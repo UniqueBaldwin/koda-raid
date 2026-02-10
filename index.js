@@ -1,39 +1,57 @@
 const express = require('express');
 const path = require('path');
+const axios = require('axios');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render usa el 10000 por defecto
+const PORT = process.env.PORT || 10000;
 
-// Configuración de Discord (Basado en tus capturas)
+// Datos de tu aplicación (Extraídos de tus capturas)
 const CLIENT_ID = '1469577414022795346'; 
+const CLIENT_SECRET = 'TU_CLIENT_SECRET_AQUI'; // Búscalo en Discord Dev Portal > OAuth2
 const REDIRECT_URI = 'https://koda-raid.onrender.com/auth/callback';
 
 app.use(cors());
 app.use(express.json());
-
-// Servir la carpeta public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- RUTAS ---
-
-// Arregla el error "Cannot GET /login"
+// Ruta para iniciar el login
 app.get('/login', (req, res) => {
-    const discordUrl = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify`;
-    res.redirect(discordUrl);
+    const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify`;
+    res.redirect(url);
 });
 
-// Ruta para cuando el usuario acepta en Discord
-app.get('/auth/callback', (req, res) => {
-    // Redirige al inicio con un mensaje de éxito simulado
-    res.redirect('/?auth=success');
+// Ruta de retorno de Discord
+app.get('/auth/callback', async (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.redirect('/?error=no_code');
+
+    try {
+        // 1. Cambiamos el código por un token de acceso
+        const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            code: code,
+            grant_type: 'authorization_code',
+            redirect_uri: REDIRECT_URI,
+            scope: 'identify',
+        }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+
+        // 2. Usamos el token para obtener los datos del usuario
+        const userResponse = await axios.get('https://discord.com/api/users/@me', {
+            headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
+        });
+
+        const { username, avatar, id } = userResponse.data;
+        const avatarUrl = `https://cdn.discordapp.com/avatars/${id}/${avatar}.png`;
+
+        // 3. Enviamos los datos de vuelta al dashboard vía URL
+        res.redirect(`/?user=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatarUrl)}`);
+
+    } catch (error) {
+        console.error('Error en Auth:', error.response?.data || error.message);
+        res.redirect('/?error=auth_failed');
+    }
 });
 
-// Ruta principal
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor Koda corriendo en el puerto ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Koda Online en puerto ${PORT}`));

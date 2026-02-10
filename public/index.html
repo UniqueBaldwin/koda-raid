@@ -3,94 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KODA | Ultimate Command Center</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <title>KODA | Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #050505;
-            --primary: #6366f1;
-            --text: #ffffff;
-            --text-dim: #a1a1aa;
-        }
-
+        :root { --bg: #050505; --primary: #6366f1; --glass: rgba(255, 255, 255, 0.05); }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; }
         
         body {
             background-color: var(--bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: var(--text);
+            background-image: radial-gradient(circle at center, #111 0%, #050505 100%);
+            height: 100vh; display: flex; align-items: center; justify-content: center; color: white;
         }
 
-        .login-card {
-            background: rgba(15, 15, 15, 0.9);
+        .card {
+            background: rgba(10, 10, 10, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            padding: 60px 40px;
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border-radius: 40px; padding: 50px; text-align: center;
+            width: 100%; max-width: 420px; backdrop-filter: blur(10px);
         }
 
-        .logo-box {
-            background: #000;
-            width: 100px;
-            height: 100px;
-            border-radius: 25px;
-            margin: 0 auto 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255,255,255,0.1);
+        .profile-container {
+            width: 110px; height: 110px; margin: 0 auto 25px;
+            position: relative;
         }
 
-        .logo-box img {
-            width: 70%;
-            height: 70%;
-            object-fit: contain;
+        #user-avatar {
+            width: 100%; height: 100%; border-radius: 30px;
+            object-fit: cover; border: 2px solid var(--primary);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
         }
 
-        .brand-name { font-size: 2.2rem; font-weight: 700; margin-bottom: 10px; }
-        .brand-name span { color: var(--primary); }
+        .status-badge {
+            width: 20px; height: 20px; background: #22c55e;
+            position: absolute; bottom: -5px; right: -5px;
+            border-radius: 50%; border: 3px solid #0a0a0a;
+            display: none; /* Se activa al loguear */
+        }
+
+        h1 { font-size: 2.5rem; margin-bottom: 5px; letter-spacing: -1px; }
+        h1 span { color: var(--primary); }
+        p { color: #888; margin-bottom: 35px; }
 
         .btn-discord {
-            background: #5865F2;
-            color: white;
-            text-decoration: none;
-            padding: 16px;
-            border-radius: 15px;
-            font-weight: 700;
-            display: block;
-            margin-top: 30px;
-            transition: 0.3s;
+            background: #5865F2; color: white; text-decoration: none;
+            padding: 18px; border-radius: 18px; display: block;
+            font-weight: 700; transition: 0.3s;
         }
 
-        .btn-discord:hover { background: #4752c4; transform: translateY(-2px); }
+        .btn-discord:hover { background: #4752c4; transform: translateY(-3px); }
     </style>
 </head>
 <body>
 
-    <div class="login-card">
-        <div class="logo-box">
-            <img src="logo.png" alt="Logo">
+    <div class="card">
+        <div class="profile-container">
+            <img src="logo.png" id="user-avatar" alt="Koda">
+            <div class="status-badge" id="status"></div>
         </div>
-        
-        <h1 class="brand-name">KODA<span>RAID</span></h1>
-        <p style="color: var(--text-dim)">Sistema de Soporte Avanzado</p>
 
-        <a href="/login" class="btn-discord">
+        <h1 id="welcome-text">KODA<span>RAID</span></h1>
+        <p id="sub-text">Sistema de Soporte Avanzado</p>
+
+        <a href="/login" class="btn-discord" id="login-btn">
             CONECTAR DISCORD
         </a>
     </div>
 
     <script>
-        // Si venimos del callback exitoso
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('auth') === 'success') {
-            alert('¡Conexión con Discord exitosa!');
+        const params = new URLSearchParams(window.location.search);
+        const user = params.get('user');
+        const avatar = params.get('avatar');
+
+        if (user && avatar) {
+            // Actualizar interfaz con datos de Discord
+            document.getElementById('user-avatar').src = avatar;
+            document.getElementById('welcome-text').innerHTML = `Hola, <span>${user}</span>`;
+            document.getElementById('sub-text').innerText = "Sesión Iniciada correctamente";
+            document.getElementById('status').style.display = 'block';
+            document.getElementById('login-btn').style.display = 'none';
         }
     </script>
 </body>
