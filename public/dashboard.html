@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KODA RAID | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root { --bg: #09090b; --sidebar: #000; --primary: #6366f1; --border: #27272a; --text: #e4e4e7; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Space Grotesk', sans-serif; }
+        body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Layout */
+        .sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .content { padding: 30px; overflow-y: auto; height: 100%; display: none; }
+        .content.active { display: block; }
+
+        /* Componentes */
+        .logo { font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 30px; display: flex; align-items: center; gap: 10px; }
+        .nav-btn { padding: 12px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; color: #a1a1aa; display: flex; gap: 10px; transition: 0.2s; }
+        .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.05); color: white; }
+        .nav-btn.active { border-left: 3px solid var(--primary); }
+        
+        .card { background: #18181b; border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn:hover { opacity: 0.9; }
+        input, textarea, select { width: 100%; background: #000; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+
+        /* Chat System */
+        .chat-container { display: flex; height: calc(100vh - 100px); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .ticket-list { width: 250px; background: #101012; border-right: 1px solid var(--border); overflow-y: auto; }
+        .ticket-item { padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .ticket-item.active { background: rgba(99, 102, 241, 0.1); border-left: 3px solid var(--primary); }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #000; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 70%; padding: 10px 15px; border-radius: 10px; font-size: 0.9rem; }
+        .msg.support { align-self: flex-end; background: var(--primary); color: white; }
+        .msg.user { align-self: flex-start; background: #27272a; }
+        .chat-input { padding: 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+
+        /* Utilidades */
+        .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; background: #333; text-transform: uppercase; }
+        .role-owner { background: #ef4444; color: white; }
+        .role-support { background: var(--primary); color: white; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">⚡ KODA RAID</div>
+        <div id="nav-container">
+            </div>
+        <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <img id="my-avatar" src="" style="width: 30px; height: 30px; border-radius: 50%;">
+                <div>
+                    <div id="my-username" style="font-size: 0.9rem; font-weight: bold;">Cargando...</div>
+                    <div id="my-role" class="badge">...</div>
+                </div>
+            </div>
+            <a href="/logout" style="color: #ef4444; text-decoration: none; font-size: 0.9rem;">Cerrar Sesión</a>
+        </div>
+    </nav>
+
+    <main class="main">
+        <section id="view-setup" class="content">
+            <h1>Configuración de Servidores</h1>
+            <p style="color: #aaa; margin-bottom: 20px;">Instala el sistema de tickets en tus servidores.</p>
+            <div id="guild-loader">Cargando servidores...</div>
+            <div id="guild-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;"></div>
+            
+            <div id="setup-panel" class="card hidden" style="margin-top: 20px; border-color: var(--primary);">
+                <h3>Configurando: <span id="setup-guild-name"></span></h3>
+                <input type="hidden" id="setup-guild-id">
+                <label>ID del Canal</label>
+                <input type="text" id="setup-channel" placeholder="Ej: 123456789012345678">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label>Título Embed</label>
+                        <input type="text" id="setup-title" value="Soporte Koda">
+                        <label>Descripción</label>
+                        <textarea id="setup-desc">Abre un ticket para ayuda.</textarea>
+                    </div>
+                    <div>
+                        <label>Color</label>
+                        <input type="color" id="setup-color" value="#6366f1" style="height: 40px;">
+                        <label>Texto Botón</label>
+                        <input type="text" id="setup-btn" value="Crear Ticket">
+                        <label>Emoji</label>
+                        <input type="text" id="setup-emoji" value="📩">
+                    </div>
+                </div>
+                <button class="btn" onclick="sendSetup()">Instalar Panel</button>
+            </div>
+        </section>
+
+        <section id="view-chat" class="content">
+            <h1>Soporte en Vivo</h1>
+            <div class="chat-container">
+                <div class="ticket-list" id="ticket-list">
+                    </div>
+                <div class="chat-area">
+                    <div id="chat-header" style="padding: 15px; border-bottom: 1px solid var(--border); font-weight: bold;">Selecciona un ticket</div>
+                    <div class="messages" id="messages-box"></div>
+                    <div class="chat-input hidden" id="chat-controls">
+                        <input type="text" id="msg-input" placeholder="Escribe tu respuesta (se autocorregirá)...">
+                        <button class="btn" onclick="sendMessage()">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-staff" class="content">
+            <h1>Gestión de Equipo</h1>
+            <div class="card">
+                <h3>Añadir Staff</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="new-staff-id" placeholder="ID de Discord del usuario">
+                    <button class="btn" onclick="modifyStaff('add')">Añadir</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Miembros actuales</h3>
+                <ul id="staff-list" style="list-style: none; padding-left: 0;"></ul>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const socket = io();
+        let currentUser = null;
+        let currentTicket = null;
+
+        // INICIALIZACIÓN
+        async function init() {
+            try {
+                const res = await fetch('/api/me');
+                if (res.status === 401 || res.status === 403) window.location.href = '/login.html'; // Redirigir si no hay sesión
+                currentUser = await res.json();
+                
+                renderUser();
+                renderMenu();
+                
+                // Cargar datos iniciales según rol
+                if(currentUser.role === 'owner') {
+                    loadStaff();
+                    loadGuilds();
+                }
+                if(currentUser.role === 'owner' || currentUser.role === 'support') {
+                    loadTickets();
+                }
+
+            } catch (e) {
+                console.error("Error init", e);
+                window.location.href = '/login.html';
+            }
+        }
+
+        function renderUser() {
+            document.getElementById('my-username').innerText = currentUser.username;
+            document.getElementById('my-role').innerText = currentUser.role;
+            document.getElementById('my-role').className = `badge role-${currentUser.role}`;
+            document.getElementById('my-avatar').src = currentUser.avatar;
+        }
+
+        function renderMenu() {
+            const nav = document.getElementById('nav-container');
+            let html = '';
+            
+            if (currentUser.role === 'owner') {
+                html += `<div class="nav-btn" onclick="switchView('view-setup')">⚙️ Setup</div>`;
+                html += `<div class="nav-btn" onclick="switchView('view-staff')">🛡️ Staff</div>`;
+            }
+            if (currentUser.role === 'owner' || currentUser.role === 'support') {
+                html += `<div class="nav-btn" onclick="switchView('view-chat')">💬 Tickets</div>`;
+            }
+            
+            nav.innerHTML = html;
+            // Activar primera vista disponible
+            if(currentUser.role === 'owner') switchView('view-setup');
+            else if(currentUser.role === 'support') switchView('view-chat');
+        }
+
+        function switchView(id) {
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // --- MÓDULO SETUP ---
+        async function loadGuilds() {
+            const res = await fetch('/api/guilds');
+            const guilds = await res.json();
+            const grid = document.getElementById('guild-grid');
+            document.getElementById('guild-loader').style.display = 'none';
+            
+            grid.innerHTML = guilds.map(g => `
+                <div class="card" style="cursor: pointer; text-align: center;" onclick="prepSetup('${g.id}', '${g.name}')">
+                    <img src="${g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" style="width: 50px; height: 50px; border-radius: 50%; margin-bottom: 10px;">
+                    <h4>${g.name}</h4>
+                </div>
+            `).join('');
+        }
+
+        function prepSetup(id, name) {
+            document.getElementById('setup-panel').classList.remove('hidden');
+            document.getElementById('setup-guild-name').innerText = name;
+            document.getElementById('setup-guild-id').value = id;
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        async function sendSetup() {
+            const data = {
+                guildId: document.getElementById('setup-guild-id').value,
+                channelId: document.getElementById('setup-channel').value,
+                embedConfig: {
+                    title: document.getElementById('setup-title').value,
+                    desc: document.getElementById('setup-desc').value,
+                    color: document.getElementById('setup-color').value,
+                    btnText: document.getElementById('setup-btn').value,
+                    emoji: document.getElementById('setup-emoji').value
+                }
+            };
+            
+            const res = await fetch('/api/setup', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            
+            if(res.ok) alert("✅ Setup completado en Discord");
+            else alert("❌ Error. Revisa el ID del canal y que el bot tenga permisos.");
+        }
+
+        // --- MÓDULO CHAT ---
+        async function loadTickets() {
+            const res = await fetch('/api/tickets');
+            const tickets = await res.json();
+            renderTicketList(tickets);
+        }
+
+        function renderTicketList(tickets) {
+            const list = document.getElementById('ticket-list');
+            list.innerHTML = tickets.map(t => `
+                <div class="ticket-item" onclick="openTicket('${t.id}')" id="t-${t.id}">
+                    <div style="font-weight: bold;">${t.username}</div>
+                    <div style="font-size: 0.8rem; color: #888;">${t.guildName}</div>
+                </div>
+            `).join('');
+        }
+
+        async function openTicket(ticketId) {
+            currentTicket = ticketId;
+            document.getElementById('chat-controls').classList.remove('hidden');
+            document.getElementById('chat-header').innerText = `Chat ID: ${ticketId}`;
+            
+            // Cargar historial (aquí lo sacamos de la lista local por simplicidad, idealmente un fetch individual)
+            const res = await fetch('/api/tickets'); 
+            const tickets = await res.json();
+            const ticket = tickets.find(t => t.id === ticketId);
+            
+            renderMessages(ticket.history);
+            socket.emit('join_ticket', ticketId);
+        }
+
+        function renderMessages(history) {
+            const box = document.getElementById('messages-box');
+            box.innerHTML = history.map(m => `
+                <div class="msg ${m.role}">
+                    <div style="font-size: 0.7rem; opacity: 0.7; margin-bottom: 2px;">${m.author}</div>
+                    ${m.content}
+                </div>
+            `).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            if(!input.value) return;
+            
+            socket.emit('send_message', {
+                ticketId: currentTicket,
+                content: input.value,
+                staffName: currentUser.username
+            });
+            input.value = '';
+        }
+
+        socket.on('new_message', (msg) => {
+            // Si estamos viendo este ticket, agregar mensaje
+            if (currentTicket) {
+                const box = document.getElementById('messages-box');
+                const div = document.createElement('div');
+                div.className = `msg ${msg.role}`;
+                div.innerHTML = `<div style="font-size: 0.7rem; opacity: 0.7; margin-bottom: 2px;">${msg.author}</div>${msg.content}`;
+                box.appendChild(div);
+                box.scrollTop = box.scrollHeight;
+            }
+        });
+
+        // --- MÓDULO STAFF ---
+        async function loadStaff() {
+            const res = await fetch('/api/staff');
+            const staff = await res.json();
+            document.getElementById('staff-list').innerHTML = staff.map(id => `
+                <li style="padding: 10px; background: #222; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between;">
+                    <span>${id}</span>
+                    <button style="color: red; background: none; border: none; cursor: pointer;" onclick="modifyStaff('remove', '${id}')">Eliminar</button>
+                </li>
+            `).join('');
+        }
+
+        async function modifyStaff(action, id = null) {
+            const targetId = id || document.getElementById('new-staff-id').value;
+            if(!targetId) return;
+
+            await fetch('/api/staff', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: targetId, action })
+            });
+            loadStaff();
+            if(action === 'add') document.getElementById('new-staff-id').value = '';
+        }
+
+        init();
+    </script>
+</body>
+</html>

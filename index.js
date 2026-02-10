@@ -1,256 +1,312 @@
-const { Client, GatewayIntentBits, Partials, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+require('dotenv').config();
 const express = require('express');
-const http = require('http');
+const session = require('express-session');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
 const { Server } = require("socket.io");
-const path = require('path');
+const http = require('http');
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 
+// --- CONFIGURACIÓN ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// --- CONFIG ---
+// DATOS CRÍTICOS (Asegúrate de tener esto en tu .env o variables de Render)
 const CONFIG = {
-    ownerId: '1469577414022795346', // TU ID
-    clientId: '1469577414022795346', // ID DEL BOT
-    clientSecret: process.env.DISCORD_CLIENT_SECRET, 
-    token: process.env.DISCORD_TOKEN,
-    redirectUri: 'https://koda-raid.onrender.com/auth/callback' // CAMBIA ESTO A TU URL REAL
+    clientId: process.env.DISCORD_CLIENT_ID || 'TU_CLIENT_ID', 
+    clientSecret: process.env.DISCORD_CLIENT_SECRET || 'TU_CLIENT_SECRET',
+    redirectUri: process.env.DISCORD_REDIRECT_URI || 'https://tu-app.onrender.com/auth/discord/callback',
+    ownerId: '1469577414022795346', // TU ID REAL
+    token: process.env.DISCORD_TOKEN || 'TU_TOKEN_BOT'
 };
 
-// --- BASE DE DATOS LOCAL ---
-const DB_PATH = './database.json';
-let db = { staff: [], tickets: {}, configs: {} }; // configs guarda la personalización por servidor
+// --- BASE DE DATOS JSON (Persistencia) ---
+const DB_FILE = './data.json';
+let db = { staff: [], tickets: {}, configs: {} };
+if (fs.existsSync(DB_FILE)) db = JSON.parse(fs.readFileSync(DB_FILE));
 
-if (fs.existsSync(DB_PATH)) {
-    db = JSON.parse(fs.readFileSync(DB_PATH));
+function saveDB() {
+    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
-function saveDB() { fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2)); }
+
+// --- MIDDLEWARE ---
+app.use(express.json());
+app.use(express.static('public'));
+app.use(session({
+    secret: 'koda-secret-key-super-segura',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 horas (poner secure: true si tienes HTTPS configurado con proxy)
+}));
+
+// Middleware de Protección de Rutas
+function checkAuth(req, res, next) {
+    if (req.session.user) return next();
+    res.redirect('/login.html');
+}
 
 // --- BOT DISCORD ---
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
     partials: [Partials.Channel]
 });
 
-// --- UTILIDAD: CORRECTOR ORTOGRÁFICO BÁSICO ---
-function autoCorrect(text) {
-    if (!text) return "";
-    let formatted = text.trim();
-    // 1. Mayúscula inicial
-    formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-    // 2. Punto final si no tiene
-    if (!/[.!?]$/.test(formatted)) formatted += ".";
-    // 3. Reemplazos simples (puedes añadir más)
-    const fixes = { "q ": "que ", "k ": "que ", "bn": "bien", "xq": "porque" };
-    for (const [key, val] of Object.entries(fixes)) {
-        formatted = formatted.replace(new RegExp(`\\b${key}`, 'gi'), val);
+// Función de autocorrección simple
+const autoCorrect = (text) => {
+    let t = text.trim();
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    t = t.replace(/\bq\b/gi, 'que').replace(/\bxq\b/gi, 'porque').replace(/\bbn\b/gi, 'bien');
+    if (!/[.!?]$/.test(t)) t += '.';
+    return t;
+};
+
+// Eventos del Bot
+client.on('interactionCreate', async interaction => {
+    if (interaction.isButton() && interaction.customId === 'create_ticket') {
+        // Crear Ticket
+        const channelName = `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const guild = interaction.guild;
+        
+        // Verificar si ya tiene ticket (opcional, por ahora permitimos múltiples)
+        const channel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            permissionOverwrites: [
+                { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+                { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+            ]
+        });
+
+        // Guardar en DB
+        const ticketData = {
+            id: channel.id,
+            userId: interaction.user.id,
+            username: interaction.user.username,
+            guildId: guild.id,
+            guildName: guild.name,
+            status: 'open', // open, claimed, closed
+            claimedBy: null,
+            history: []
+        };
+        db.tickets[channel.id] = ticketData;
+        saveDB();
+
+        // Embed de bienvenida
+        const embed = new EmbedBuilder()
+            .setColor('#6366f1')
+            .setDescription(`Hola <@${interaction.user.id}>, soporte conectará contigo pronto.`);
+        await channel.send({ embeds: [embed] });
+
+        await interaction.reply({ content: `Ticket creado: <#${channel.id}>`, ephemeral: true });
+        
+        // Notificar al socket
+        io.emit('ticket_created', ticketData);
     }
-    return formatted;
-}
+});
 
-client.on('ready', () => console.log(`🤖 Logueado como ${client.user.tag}`));
-
-// ESCUCHAR MENSAJES EN DISCORD (DEL USUARIO)
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
-    
-    // Si el mensaje es en un canal de ticket registrado
-    const ticketId = message.channel.id;
-    if (db.tickets[ticketId]) {
-        // Enviar a la Web (Socket.io)
-        io.emit('discordMessage', {
-            ticketId: ticketId,
+    const ticket = db.tickets[message.channel.id];
+    if (ticket) {
+        // Es un mensaje en un ticket, guardar y enviar al dashboard
+        const msgData = {
             author: message.author.username,
             avatar: message.author.displayAvatarURL(),
             content: message.content,
-            timestamp: new Date().toLocaleTimeString()
-        });
-    }
-});
-
-// MANEJAR CREACIÓN DE TICKETS (BOTONES)
-client.on('interactionCreate', async interaction => {
-    if (interaction.isButton()) {
-        const { customId, guild } = interaction;
-        if (customId === 'create_ticket') {
-            await interaction.deferReply({ ephemeral: true });
-            
-            // Crear canal
-            const channel = await guild.channels.create({
-                name: `ticket-${interaction.user.username}`,
-                type: ChannelType.GuildText,
-                permissionOverwrites: [
-                    { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-                    { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
-                ]
-            });
-
-            // Guardar en DB
-            db.tickets[channel.id] = {
-                owner: interaction.user.id,
-                claimedBy: null, // Nadie lo ha tomado aún
-                status: 'open',
-                guildId: guild.id,
-                messages: []
-            };
-            saveDB();
-
-            const embed = new EmbedBuilder().setDescription(`Hola ${interaction.user}, espera a que un miembro del Staff te atienda.`);
-            await channel.send({ embeds: [embed] });
-
-            await interaction.editReply(`Ticket creado: ${channel}`);
-            
-            // AVISAR A LA WEB QUE HAY TICKET NUEVO
-            io.emit('newTicketIncoming', {
-                id: channel.id,
-                user: interaction.user.username,
-                guild: guild.name
-            });
-        }
-    }
-});
-
-// --- RUTAS EXPRESS ---
-
-// Login
-app.get('/auth/callback', async (req, res) => {
-    const code = req.query.code;
-    if (!code) return res.send("No code provided");
-    try {
-        const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
-            client_id: CONFIG.clientId, client_secret: CONFIG.clientSecret, code,
-            grant_type: 'authorization_code', redirect_uri: CONFIG.redirectUri, scope: 'identify guilds'
-        }));
-        const userRes = await axios.get('https://discord.com/api/users/@me', {
-            headers: { Authorization: `Bearer ${tokenRes.data.access_token}` }
-        });
-        const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-             headers: { Authorization: `Bearer ${tokenRes.data.access_token}` }
-        });
-
-        const { username, avatar, id } = userRes.data;
-        let role = (id === CONFIG.ownerId) ? 'owner' : (db.staff.includes(id) ? 'support' : 'user');
-        
-        // Guardar sesión simple en query (Inseguro para prod, útil para demo)
-        // Pasamos los guilds codificados
-        const validGuilds = guildsRes.data.filter(g => (g.permissions & 0x8) === 0x8); // Solo admins
-        // En producción usaríamos sessions de verdad
-        
-        res.redirect(`/?user=${username}&avatar=${id}/${avatar}&role=${role}&id=${id}&token=${tokenRes.data.access_token}`);
-    } catch (e) { console.error(e); res.send("Error Login"); }
-});
-
-// API: Obtener servidores mutuos (Donde el usuario es admin Y el bot está)
-app.get('/api/guilds', async (req, res) => {
-    const userId = req.query.userId;
-    if(!userId) return res.status(400).send([]);
-    
-    // Filtrar servidores donde el bot está
-    const botGuilds = client.guilds.cache.map(g => g.id);
-    // Nota: Esto requiere que pases los guilds del usuario desde el front o guardes sesión.
-    // Para simplificar, asumiremos que el frontend envía los IDs donde es admin, y validamos aquí.
-    
-    // Simulación: devolver todos los del bot para demo (en prod cruzar datos)
-    const mutuals = client.guilds.cache.map(g => ({
-        id: g.id, 
-        name: g.name, 
-        icon: g.iconURL(),
-        memberCount: g.memberCount
-    }));
-    res.json(mutuals);
-});
-
-// API: Enviar Configuración de Ticket (Setup)
-app.post('/api/setup/ticket', async (req, res) => {
-    const { guildId, channelId, embedData } = req.body;
-    
-    try {
-        const guild = client.guilds.cache.get(guildId);
-        if(!guild) return res.status(404).send("Guild no encontrada");
-        
-        const channel = guild.channels.cache.get(channelId);
-        if(!channel) return res.status(404).send("Canal no encontrado");
-
-        // Construir Embed
-        const embed = new EmbedBuilder()
-            .setTitle(embedData.title)
-            .setDescription(embedData.desc)
-            .setColor(embedData.color);
-        
-        if(embedData.image) embed.setImage(embedData.image);
-
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('create_ticket')
-                    .setLabel(embedData.btnText)
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji(embedData.btnEmoji || '📩')
-            );
-
-        await channel.send({ embeds: [embed], components: [row] });
-        
-        // Guardar config
-        db.configs[guildId] = embedData;
+            role: 'user', // El usuario de discord siempre es 'user' en este contexto
+            timestamp: Date.now()
+        };
+        ticket.history.push(msgData);
         saveDB();
+        io.to(message.channel.id).emit('new_message', msgData); // Emitir a la sala del socket
+    }
+});
 
-        res.json({ success: true });
+// --- RUTAS DE AUTENTICACIÓN ---
+app.get('/login', (req, res) => {
+    const url = `https://discord.com/api/oauth2/authorize?client_id=${CONFIG.clientId}&redirect_uri=${encodeURIComponent(CONFIG.redirectUri)}&response_type=code&scope=identify%20guilds`;
+    res.redirect(url);
+});
+
+app.get('/auth/discord/callback', async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.redirect('/login.html');
+
+    try {
+        // 1. Canjear código por token
+        const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+            client_id: CONFIG.clientId,
+            client_secret: CONFIG.clientSecret,
+            code,
+            grant_type: 'authorization_code',
+            redirect_uri: CONFIG.redirectUri,
+        }));
+
+        const accessToken = tokenRes.data.access_token;
+
+        // 2. Obtener datos del usuario
+        const userRes = await axios.get('https://discord.com/api/users/@me', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        const userData = userRes.data;
+        
+        // 3. Determinar Rol
+        let role = 'user';
+        if (userData.id === CONFIG.ownerId) role = 'owner';
+        else if (db.staff.includes(userData.id)) role = 'support';
+
+        // 4. Crear Sesión
+        req.session.user = {
+            id: userData.id,
+            username: userData.username,
+            avatar: `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`,
+            role: role,
+            accessToken: accessToken
+        };
+
+        res.redirect('/'); // Redirigir al dashboard principal
     } catch (e) {
         console.error(e);
+        res.redirect('/login.html?error=auth_failed');
+    }
+});
+
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/login.html');
+});
+
+// --- API ---
+app.get('/api/me', checkAuth, (req, res) => {
+    res.json(req.session.user);
+});
+
+app.get('/api/tickets', checkAuth, (req, res) => {
+    // Owner y Support ven todos los tickets
+    if (['owner', 'support'].includes(req.session.user.role)) {
+        res.json(Object.values(db.tickets).filter(t => t.status !== 'closed'));
+    } else {
+        res.status(403).json([]);
+    }
+});
+
+app.get('/api/guilds', checkAuth, async (req, res) => {
+    // Obtener guilds del usuario desde Discord API
+    try {
+        const response = await axios.get('https://discord.com/api/users/@me/guilds', {
+            headers: { Authorization: `Bearer ${req.session.user.accessToken}` }
+        });
+        
+        // Filtrar donde es Admin (Permissions & 0x8)
+        const adminGuilds = response.data.filter(g => (g.permissions & 0x8) === 0x8);
+        
+        // Cruzar con los guilds donde está el bot
+        const botGuildIds = client.guilds.cache.map(g => g.id);
+        const mutualGuilds = adminGuilds.filter(g => botGuildIds.includes(g.id));
+        
+        res.json(mutualGuilds);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+app.post('/api/setup', checkAuth, async (req, res) => {
+    // Configurar Embed en un canal
+    const { guildId, channelId, embedConfig } = req.body;
+    
+    // Validar seguridad basica (el usuario debe ser admin de ese guild, validación pendiente por brevedad)
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return res.status(404).send("Bot no está en el servidor");
+    
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) return res.status(404).send("Canal no encontrado");
+
+    try {
+        const embed = new EmbedBuilder()
+            .setTitle(embedConfig.title)
+            .setDescription(embedConfig.desc)
+            .setColor(embedConfig.color);
+            
+        if(embedConfig.image) embed.setImage(embedConfig.image);
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('create_ticket')
+                .setLabel(embedConfig.btnText)
+                .setStyle(ButtonStyle.Success)
+                .setEmoji(embedConfig.emoji || '📩')
+        );
+
+        await channel.send({ embeds: [embed], components: [row] });
+        res.json({ success: true });
+    } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// API: Agregar Staff (Solo Owner)
-app.post('/api/staff/add', (req, res) => {
-    const { ownerId, newStaffId } = req.body;
-    if (ownerId !== CONFIG.ownerId) return res.status(403).send("Solo Owner");
-    if (!db.staff.includes(newStaffId)) {
-        db.staff.push(newStaffId);
-        saveDB();
-    }
+// Solo Owner
+app.post('/api/staff', checkAuth, (req, res) => {
+    if (req.session.user.role !== 'owner') return res.status(403).send("Unauthorized");
+    const { id, action } = req.body; // action: add / remove
+    
+    if (action === 'add' && !db.staff.includes(id)) db.staff.push(id);
+    if (action === 'remove') db.staff = db.staff.filter(s => s !== id);
+    
+    saveDB();
     res.json(db.staff);
 });
 
-// --- SOCKET.IO (CHAT EN TIEMPO REAL) ---
-io.on('connection', (socket) => {
-    console.log('🔌 Usuario conectado al socket');
+app.get('/api/staff', checkAuth, (req, res) => {
+    if (req.session.user.role !== 'owner') return res.status(403).json([]);
+    res.json(db.staff);
+});
 
-    // Support reclama un ticket
-    socket.on('claimTicket', ({ ticketId, staffUser }) => {
-        if(db.tickets[ticketId]) {
-            db.tickets[ticketId].claimedBy = staffUser;
-            db.tickets[ticketId].status = 'claimed';
-            saveDB();
-            io.emit('ticketUpdate', { ticketId, status: 'claimed', staff: staffUser });
-        }
+// --- SOCKET.IO ---
+io.on('connection', (socket) => {
+    socket.on('join_ticket', (ticketId) => {
+        socket.join(ticketId); // Unirse a la sala del ticket
     });
 
-    // Support envía mensaje desde la Web
-    socket.on('staffMessage', async ({ ticketId, content, staffName }) => {
-        if (!db.tickets[ticketId]) return;
+    socket.on('send_message', async (data) => {
+        // data: { ticketId, content, staffName }
+        const ticket = db.tickets[data.ticketId];
+        if (!ticket) return;
 
-        // 1. Autocorrección
-        const cleanContent = autoCorrect(content);
+        // Autocorregir
+        const cleanContent = autoCorrect(data.content);
 
-        // 2. Enviar a Discord usando el Bot
+        // Enviar a Discord
         try {
-            const channel = await client.channels.fetch(ticketId);
-            if (channel) {
-                // Webhook o mensaje directo del bot con formato
-                await channel.send(`**${staffName} (Support):** ${cleanContent}`);
-            }
-        } catch (e) { console.error("Error enviando a Discord", e); }
+            const channel = await client.channels.fetch(data.ticketId);
+            await channel.send(`**${data.staffName} (Support):** ${cleanContent}`);
+            
+            // Guardar y devolver al frontend (para que se vea bonito)
+            const msgData = {
+                author: data.staffName,
+                content: cleanContent, // Enviamos el corregido
+                role: 'support',
+                timestamp: Date.now()
+            };
+            ticket.history.push(msgData);
+            saveDB();
+            
+            io.to(data.ticketId).emit('new_message', msgData);
+
+        } catch (e) { console.error(e); }
     });
 });
 
-server.listen(3000, () => {
-    console.log('🚀 Server running on port 3000');
+// Servir la app solo si autenticado (el static 'public' sirve login.html si no hay ruta)
+app.get('/', checkAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+server.listen(PORT, () => {
+    console.log(`🚀 Koda Raid System running on port ${PORT}`);
     client.login(CONFIG.token);
 });
