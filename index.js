@@ -1,55 +1,45 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+const app = express();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
 const path = require('path');
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-// Configuración
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Configuración básica y archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
 
-// Simulación de DB y Auth simple
-const CONFIG = { username: "admin", password: "123" };
+// Middleware de prueba (reemplaza con tu lógica real de checkAuth)
+const checkAuth = (req, res, next) => { next(); };
 
-// Rutas
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    if (username === CONFIG.username && password === CONFIG.password) {
-        res.redirect('/dashboard');
-    } else {
-        res.send("<script>alert('Error: Datos incorrectos'); window.location='/';</script>");
-    }
-});
-
-app.get('/dashboard', (req, res) => {
+// Rutas según tu captura
+app.get('/', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Lógica de Sockets (Lo que viste en tu captura)
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Lógica de Sockets (Lo que tienes en las líneas 270-302)
 io.on('connection', (socket) => {
-    console.log('Usuario conectado:', socket.id);
-
-    socket.on('send_message', (data) => {
-        const msgData = {
-            text: data.text,
-            timestamp: Date.now()
-        };
-        // Reenvía el mensaje a todos (incluyendo el dashboard)
-        io.emit('new_message', msgData);
+    socket.on('send_message', async (data) => {
+        try {
+            const msgData = {
+                timestamp: Date.now(),
+                text: data.text,
+                ticketId: data.ticketId
+            };
+            
+            // Aquí iría tu saveDB() y ticket.history.push(msgData)
+            
+            // Emitir al canal específico del ticket
+            io.emit('new_message', msgData); 
+        } catch (e) { console.error(e); }
     });
-
-    socket.on('disconnect', () => console.log('Usuario desconectado'));
 });
 
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 Koda Raid System corriendo en http://localhost:${PORT}`);
+    console.log(`🚀 Koda Raid System running on port ${PORT}`);
+    // client.login(CONFIG.token); // Aquí va el login de tu bot de Discord
 });
